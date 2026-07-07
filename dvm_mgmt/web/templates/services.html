@@ -1,0 +1,159 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+{% extends "base.html" %}
+{% block title %}Services{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-5 py-4">
+        <div class="flex items-center justify-center w-9 h-9 rounded-lg shrink-0">
+            {% set page_icon_d = "M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" %}
+            <svg class="w-9 h-9 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="{{ page_icon_d }}" />
+            </svg>
+        </div>
+        <div>
+            <h1 class="text-xl font-bold text-foreground">Service Management</h1>
+            <p class="mt-1 text-sm text-muted-foreground">Display runtime status, reload configuration, and restart system services.</p>
+        </div>
+    </div>
+
+    <!-- Reload Operations -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {% set reloads = [
+            ("Reload Talkgroups", "post", "/api/services/reload-talkgroups/system", "cyan", "Reloads system talkgroup rules into FNE.", "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"),
+            ("Reload Radio IDs", "post", "/api/services/reload-rids", "green", "Reloads the RID ACL into FNE.", "M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"),
+            ("Reload Peer List", "post", "/api/services/reload-peerlist", "cyan", "Reloads peer ID ACL into FNE.", "M3 9V15C3 17.8284 3 19.2426 3.87868 20.1213C4.75736 21 6.17157 21 9 21H15C17.8284 21 19.2426 21 20.1213 20.1213C21 19.2426 21 17.8284 21 15V9C21 6.17157 21 4.75736 20.1213 3.87868C19.2426 3 17.8284 3 15 3H9 M15 15V16H16V15H15ZM7.70711 6.29289C7.31658 5.90237 6.68342 5.90237 6.29289 6.29289C5.90237 6.68342 5.90237 7.31658 6.29289 7.70711L7.70711 6.29289ZM14 8V15H16V8H14ZM15 14H8V16H15V14ZM15.7071 14.2929L7.70711 6.29289L6.29289 7.70711L14.2929 15.7071L15.7071 14.2929Z"),
+            ("Reload Crypto", "post", "/api/services/reload-crypto", "purple", "Reloads cryptographic keys/configuration.", "M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"),
+            ("Force Update to Peers", "post", "/api/services/force-update", "yellow", "Pushes a full config update to all connected peers.", "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"),
+        ] %}
+
+        {% for label, method, url, color, desc, icon_d in reloads %}
+        <div class="bg-card rounded-xl border flex flex-col shadow-2xl">
+            <div class="flex items-center gap-3 px-5 py-4 border-b">
+                <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-{{ color }}-500/15 border border-{{ color }}-500/30 shrink-0">
+                    <svg class="w-5 h-5 text-{{ color }}-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_d }}" />
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-foreground">{{ label }}</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">{{ desc }}</p>
+                </div>
+            </div>
+            <div class="p-5">
+                <button hx-{{ method }}="{{ url }}" hx-swap="none" 
+                    class="flex items-center justify-center gap-2 px-3 py-2 rounded-lg w-full
+                        bg-{{ color }}-600/20 hover:bg-{{ color }}-600/40 border border-{{ color }}-500/30
+                        text-{{ color }}-400 hover:text-{{ color }}-300 text-sm font-medium
+                        transition-all active:scale-95">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    Reload
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Process IDs -->
+    <div class="bg-card rounded-xl border shadow-2xl">
+        <div class="px-5 py-3.5 border-b flex items-center justify-between gap-3">
+            <div>
+                <h2 class="text-sm font-semibold text-foreground">Process IDs</h2>
+            </div>
+            <button hx-get="/api/services/pids" hx-target="#services-pids-output" hx-swap="innerHTML" 
+                class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                    focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                    disabled:pointer-events-none disabled:opacity-50 
+                    aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                    border bg-background shadow-xs 
+                    hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                    h-8 gap-1.5 rounded-md px-2">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+                Refresh
+            </button>
+        </div>
+        <div id="services-pids-output" class="p-5" hx-get="/api/services/pids" hx-trigger="load" hx-swap="innerHTML">
+            <div class="text-xs text-muted-foreground">Loading process information…</div>
+        </div>
+    </div>
+
+    <!-- Service Restarts -->
+    <div class="bg-card rounded-xl border shadow-2xl">
+        <div class="px-5 py-3.5 border-b">
+            <h2 class="text-sm font-semibold text-foreground">Service Restarts</h2>
+            <p class="text-xs text-muted-foreground mt-0.5">Stop running service processes. Manual restart may be required if the process doesn't restart automatically.<br />
+                <span class="font-medium text-red-500"><i>NOTE</i>: Do not attempt to restart services more then once. After restarting if any service claims to have failed to restart, refresh this
+                    page and check Process IDs table above <i>before</i> attempting a second restart.</span>
+            </p>
+        </div>
+        <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {% set restarts = [
+                ("Restart FNE (dvmfne)", "fne", "red", "Stops the FNE processes."),
+            ] %}
+            {% if config.system_watch_enabled %}
+            {% set _ = restarts.append(("Restart SysView (sysview)", "sysview", "red", "Stops the SysView process.")) %}
+            {% endif %}
+
+            {% for label, service, color, desc in restarts %}
+            {% if not (is_subprime and service in ["las", "rc"]) %}
+            <div x-data="{ confirm: false }"
+                class="flex flex-col gap-3 p-4 rounded-xl hover:border-{{ color }}-700 bg-card/50 border shadow-2xl">
+                <div>
+                    <p class="text-sm font-medium text-foreground">{{ label }}</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">{{ desc }}</p>
+                </div>
+                <div x-show="!confirm">
+                    <button @click="confirm = true" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg
+                         bg-red-600/15 hover:bg-red-600/30 border border-red-500/30
+                         text-red-400 hover:text-red-300 text-sm font-medium transition-all active:scale-95">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" />
+                        </svg>
+                        Restart
+                    </button>
+                </div>
+                <div x-show="confirm" class="flex gap-2">
+                    <button @click="confirm = false" 
+                        class="flex-1 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                            focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                            disabled:pointer-events-none disabled:opacity-50 
+                            aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                            border bg-background shadow-xs 
+                            hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                            h-8 gap-1.5 rounded-md px-2">Cancel</button>
+                    <button @click="confirm = false" hx-post="/api/services/restart/{{ service }}" hx-swap="none" 
+                        class="flex-1 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                            focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                            disabled:pointer-events-none disabled:opacity-50 
+                            aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                            border bg-destructive shadow-xs 
+                            hover:bg-destructive hover:text-destructive-foreground dark:border-destructive dark:bg-destructive/30 dark:hover:bg-destructive/50 
+                            h-8 gap-1.5 rounded-md px-2">Confirm</button>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

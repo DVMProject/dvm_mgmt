@@ -1,0 +1,84 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+{% extends "base.html" %}
+{% block title %}Connected Peers{% endblock %}
+
+{% block content %}
+<div x-data="{ scope: 'system' }" class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-5 py-4">
+        <div class="flex items-center justify-center w-9 h-9 rounded-lg shrink-0">
+            {% set page_icon_d = "M3 9V15C3 17.8284 3 19.2426 3.87868 20.1213C4.75736 21 6.17157 21 9 21H15C17.8284 21 19.2426 21 20.1213 20.1213C21 19.2426 21 17.8284 21 15V9C21 6.17157 21 4.75736 20.1213 3.87868C19.2426 3 17.8284 3 15 3H9 M15 15V16H16V15H15ZM7.70711 6.29289C7.31658 5.90237 6.68342 5.90237 6.29289 6.29289C5.90237 6.68342 5.90237 7.31658 6.29289 7.70711L7.70711 6.29289ZM14 8V15H16V8H14ZM15 14H8V16H15V14ZM15.7071 14.2929L7.70711 6.29289L6.29289 7.70711L14.2929 15.7071L15.7071 14.2929Z" %}
+            <svg class="w-9 h-9 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="{{ page_icon_d }}" />
+            </svg>
+        </div>
+        <div>
+            <h1 class="text-xl font-bold text-foreground">Connected Peers</h1>
+            <p class="mt-1 text-sm text-muted-foreground">Live view of peers currently connected to the system via FNE.</p>
+        </div>
+    </div>
+
+    <input id="connected-peers-scope" type="hidden" name="scope" x-model="scope" />
+
+    <!-- Connected Peers Panel (live, from FNE API) -->
+    <div class="bg-card rounded-xl border shadow-2xl">
+        <!-- System Selector & Refresh -->
+        <div class="flex items-center justify-between px-5 py-3.5 border-b">
+            <h2 class="text-sm font-semibold text-foreground">Active Connections <span
+                    class="text-xs text-muted-foreground">(30s refresh)</span></h2>
+            <div class="flex items-center gap-2">
+                <button
+                    @click="showPanelLoading('#connected-peers-panel', 'Loading connected peers...'); htmx.ajax('GET', '/api/connected-peers?scope=' + scope, {target: '#connected-peers-panel', swap: 'innerHTML'})"
+                    class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                        focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                        disabled:pointer-events-none disabled:opacity-50 
+                        aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                        border bg-background shadow-xs 
+                        hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                        h-8 gap-1.5 rounded-md px-2">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+        <div class="px-5 py-3 border-b">
+            <label for="connected-peers-filter" class="sr-only">Filter connected peers</label>
+            <input id="connected-peers-filter" type="text"
+                placeholder="Filter loaded table by peer ID, alias, address, status, or software"
+                data-table-filter-target="#connected-peers-panel" 
+                class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none 
+                    selection:bg-primary selection:text-primary-foreground file:inline-flex 
+                    placeholder:text-muted-foreground 
+                    disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 
+                    md:text-sm dark:bg-input/30 
+                    focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                    aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40" />
+        </div>
+        <div id="connected-peers-panel" hx-get="/api/connected-peers" hx-trigger="load, every 30s"
+            hx-include="#connected-peers-scope" hx-target="#connected-peers-panel" hx-swap="innerHTML"
+            class="p-4 min-h-[80px]">
+            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Loading connected peers…
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

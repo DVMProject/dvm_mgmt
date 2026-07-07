@@ -1,0 +1,50 @@
+<!-- fragments/radio_id_list.html -->
+{% if error %}
+<p class="text-sm text-red-400 px-1">{{ error }}</p>
+{% elif entries %}
+<div>
+    <table class="w-full text-sm table-sortable">
+        <thead>
+            <tr class="text-left text-xs font-semibold text-foreground uppercase tracking-wider border-b">
+                <th class="bg-card pt-2 pb-2 px-3">RID</th>
+                <th class="bg-card pt-2 pb-2 px-3 text-center">Enabled</th>
+                <th class="bg-card pt-2 pb-2 px-3">Alias</th>
+                <th class="bg-card pt-2 pb-2 px-3">IP Address</th>
+                <th class="bg-card pt-2 pb-2 px-3 text-center">Can Request Keys</th>
+                <th class="bg-card pt-2 pb-2 px-3 text-center">Can Rekey</th>
+                <th class="bg-card pt-2 pb-2 px-3">Allowed KIDs</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y">
+            {% for entry in entries | sort(attribute='rid') %}
+            <tr class="hover:bg-muted/40 transition-colors align-top">
+                <td class="py-2 px-3 font-mono text-cyan-400 text-xs tabular-nums whitespace-nowrap">{{ entry.rid }}
+                </td>
+                <td class="py-2 px-3 text-center text-xs whitespace-nowrap">
+                    {% if entry.enabled %}<span class="text-green-400">✓</span>{% else %}<span
+                        class="text-red-400">✗</span>{% endif %}
+                </td>
+                <td class="py-2 px-3 text-muted-foreground text-xs">{{ entry.alias or '—' }}</td>
+                <td class="py-2 px-3 font-mono text-muted-foreground text-xs whitespace-nowrap">{{ entry.ip_address or
+                    '—' }}</td>
+                <td class="py-2 px-3 text-center text-xs whitespace-nowrap">
+                    {% if entry.can_request_keys %}<span class="text-green-400">✓</span>{% else %}<span
+                        class="text-muted-foreground">—</span>{% endif %}
+                </td>
+                <td class="py-2 px-3 text-center text-xs whitespace-nowrap">
+                    {% if entry.can_rekey %}<span class="text-green-400">✓</span>{% else %}<span
+                        class="text-muted-foreground">—</span>{% endif %}
+                </td>
+                <td class="py-2 px-3 font-mono text-muted-foreground text-xs">{{ entry.allowed_kids_display or 'Any' }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="px-4 py-2.5 text-xs text-muted-foreground text-right">
+        {{ entries | length }} radio ID{{ 's' if entries | length != 1 }}
+    </p>
+</div>
+{% else %}
+<p class="text-sm text-muted-foreground italic px-1">No radio IDs found in file.</p>
+{% endif %}

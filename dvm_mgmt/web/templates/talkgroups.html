@@ -1,0 +1,105 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+{% extends "base.html" %}
+{% block title %}Talkgroups{% endblock %}
+
+{% block content %}
+<div x-data="{ system: 'system' }" class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-5 py-4">
+        <div class="flex items-center justify-center w-9 h-9 rounded-lg shrink-0">
+            {% set page_icon_d = "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" %}
+            <svg class="w-9 h-9 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="{{ page_icon_d }}" />
+            </svg>
+        </div>
+        <div class="min-w-0 flex-1">
+            <h1 class="text-xl font-bold text-foreground">Configured Talkgroups</h1>
+            <p class="mt-1 text-sm text-muted-foreground">View currently configured talkgroups and trigger reloads to FNE. (This is a <i>configured</i> view of the talkgroups configured in the system.)</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="bg-card rounded-xl border flex flex-col shadow-2xl">
+            <div class="flex items-center justify-between px-5 py-3.5 border-b">
+                <h2 class="text-sm font-semibold text-foreground">System Talkgroups</h2>
+                <button hx-post="/api/talkgroups/{{ sys }}/reload" hx-swap="none"
+                    class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                        focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                        disabled:pointer-events-none disabled:opacity-50 
+                        aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                        border bg-background shadow-xs 
+                        hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                        h-8 gap-1.5 rounded-md px-2">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    Reload
+                </button>
+            </div>
+            <div class="px-5 py-4 text-sm text-foreground">
+                Path: <code class="text-muted-foreground">{{ config.system_tgid_acl_file }}</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live talkgroup list -->
+    <div class="bg-card rounded-xl border shadow-2xl">
+        <!-- System Selector & Refresh -->
+        <div class="flex items-center justify-between px-5 py-3.5 border-b">
+            <div class="flex w-full items-center mr-2 gap-2">
+                <label for="tg-filter" class="sr-only">Filter talkgroups</label>
+                <input id="tg-filter" type="text"
+                    placeholder="Filter loaded table by TGID, slot, name, alias, or status"
+                    data-table-filter-target="#tg-list-panel"
+                    class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none 
+                        selection:bg-primary selection:text-primary-foreground file:inline-flex 
+                        placeholder:text-muted-foreground 
+                        disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 
+                        md:text-sm dark:bg-input/30 
+                        focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                        aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40" />
+            </div>
+            <div class="flex items-center gap-2">
+                <button
+                    @click="showPanelLoading('#tg-list-panel', 'Loading talkgroups...'); htmx.ajax('GET', '/api/talkgroups/' + system, '#tg-list-panel')"
+                    class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                        focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                        disabled:pointer-events-none disabled:opacity-50 
+                        aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                        border bg-background shadow-xs 
+                        hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                        h-8 gap-1.5 rounded-md px-2">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+        <div id="tg-list-panel" hx-get="/api/talkgroups/system" hx-trigger="load" hx-target="#tg-list-panel"
+            hx-swap="innerHTML" class="p-4 min-h-[120px]">
+            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Loading talkgroups…
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

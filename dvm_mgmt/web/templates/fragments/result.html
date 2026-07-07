@@ -1,0 +1,27 @@
+<!-- fragments/result.html — inline result for radio commands -->
+<div class="mt-3 px-4 py-3 rounded-lg border text-sm
+     {% if success %}
+       bg-green-900/30 border-green-700/50 text-green-400
+     {% else %}
+       bg-red-900/30 border-red-700/50 text-red-400
+     {% endif %}">
+    <div class="flex items-start gap-2">
+        {% if success %}
+        <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        {% else %}
+        <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        {% endif %}
+        <div>
+            <p class="font-medium">{{ message }}</p>
+            {% if detail and not success %}
+            <p class="text-xs mt-1 opacity-70">{{ detail.get('error', '') }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,293 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - DVM Management Console</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @custom-variant dark (&:is(.dark *));
+
+        :root {
+            --background: #ffffff;
+            --foreground: #262626;
+            --card: #ffffff;
+            --card-foreground: #262626;
+            --popover: #ffffff;
+            --popover-foreground: #262626;
+            --primary: #f59e0b;
+            --primary-foreground: #000000;
+            --secondary: #f3f4f6;
+            --secondary-foreground: #4b5563;
+            --muted: #f9fafb;
+            --muted-foreground: #6b7280;
+            --accent: #fffbeb;
+            --accent-foreground: #92400e;
+            --destructive: #ef4444;
+            --destructive-foreground: #ffffff;
+            --border: #e5e7eb;
+            --input: #e5e7eb;
+            --ring: #f59e0b;
+            --chart-1: #f59e0b;
+            --chart-2: #d97706;
+            --chart-3: #b45309;
+            --chart-4: #92400e;
+            --chart-5: #78350f;
+            --sidebar: #f9fafb;
+            --sidebar-foreground: #262626;
+            --sidebar-primary: #f59e0b;
+            --sidebar-primary-foreground: #ffffff;
+            --sidebar-accent: #fffbeb;
+            --sidebar-accent-foreground: #92400e;
+            --sidebar-border: #e5e7eb;
+            --sidebar-ring: #f59e0b;
+            --font-sans: Inter, sans-serif;
+            --font-serif: Source Serif 4, serif;
+            --font-mono: JetBrains Mono, monospace;
+            --radius: 0.375rem;
+            --shadow-x: 0px;
+            --shadow-y: 4px;
+            --shadow-blur: 8px;
+            --shadow-spread: -1px;
+            --shadow-opacity: 0.1;
+            --shadow-color: hsl(0 0% 0%);
+            --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
+            --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
+            --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
+            --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
+            --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 2px 4px -2px hsl(0 0% 0% / 0.10);
+            --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 4px 6px -2px hsl(0 0% 0% / 0.10);
+            --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 8px 10px -2px hsl(0 0% 0% / 0.10);
+            --shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
+            --tracking-normal: 0em;
+            --spacing: 0.25rem;
+        }
+
+        .dark {
+            --background: #171717;
+            --foreground: #e5e5e5;
+            --card: #262626;
+            --card-foreground: #e5e5e5;
+            --popover: #262626;
+            --popover-foreground: #e5e5e5;
+            --primary: #f59e0b;
+            --primary-foreground: #000000;
+            --secondary: #262626;
+            --secondary-foreground: #e5e5e5;
+            --muted: #1f1f1f;
+            --muted-foreground: #a3a3a3;
+            --accent: #92400e;
+            --accent-foreground: #fde68a;
+            --destructive: #ef4444;
+            --destructive-foreground: #ffffff;
+            --border: #404040;
+            --input: #404040;
+            --ring: #f59e0b;
+            --chart-1: #fbbf24;
+            --chart-2: #d97706;
+            --chart-3: #92400e;
+            --chart-4: #b45309;
+            --chart-5: #92400e;
+            --sidebar: #0f0f0f;
+            --sidebar-foreground: #e5e5e5;
+            --sidebar-primary: #f59e0b;
+            --sidebar-primary-foreground: #ffffff;
+            --sidebar-accent: #92400e;
+            --sidebar-accent-foreground: #fde68a;
+            --sidebar-border: #404040;
+            --sidebar-ring: #f59e0b;
+            --font-sans: Inter, sans-serif;
+            --font-serif: Source Serif 4, serif;
+            --font-mono: JetBrains Mono, monospace;
+            --radius: 0.375rem;
+            --shadow-x: 0px;
+            --shadow-y: 4px;
+            --shadow-blur: 8px;
+            --shadow-spread: -1px;
+            --shadow-opacity: 0.1;
+            --shadow-color: hsl(0 0% 0%);
+            --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
+            --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
+            --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
+            --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
+            --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 2px 4px -2px hsl(0 0% 0% / 0.10);
+            --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 4px 6px -2px hsl(0 0% 0% / 0.10);
+            --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 8px 10px -2px hsl(0 0% 0% / 0.10);
+            --shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
+        }
+
+        @theme inline {
+            --color-background: var(--background);
+            --color-foreground: var(--foreground);
+            --color-card: var(--card);
+            --color-card-foreground: var(--card-foreground);
+            --color-popover: var(--popover);
+            --color-popover-foreground: var(--popover-foreground);
+            --color-primary: var(--primary);
+            --color-primary-foreground: var(--primary-foreground);
+            --color-secondary: var(--secondary);
+            --color-secondary-foreground: var(--secondary-foreground);
+            --color-muted: var(--muted);
+            --color-muted-foreground: var(--muted-foreground);
+            --color-accent: var(--accent);
+            --color-accent-foreground: var(--accent-foreground);
+            --color-destructive: var(--destructive);
+            --color-destructive-foreground: var(--destructive-foreground);
+            --color-border: var(--border);
+            --color-input: var(--input);
+            --color-ring: var(--ring);
+            --color-chart-1: var(--chart-1);
+            --color-chart-2: var(--chart-2);
+            --color-chart-3: var(--chart-3);
+            --color-chart-4: var(--chart-4);
+            --color-chart-5: var(--chart-5);
+            --color-sidebar: var(--sidebar);
+            --color-sidebar-foreground: var(--sidebar-foreground);
+            --color-sidebar-primary: var(--sidebar-primary);
+            --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+            --color-sidebar-accent: var(--sidebar-accent);
+            --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+            --color-sidebar-border: var(--sidebar-border);
+            --color-sidebar-ring: var(--sidebar-ring);
+
+            --font-sans: var(--font-sans);
+            --font-mono: var(--font-mono);
+            --font-serif: var(--font-serif);
+
+            --radius-sm: calc(var(--radius) - 4px);
+            --radius-md: calc(var(--radius) - 2px);
+            --radius-lg: var(--radius);
+            --radius-xl: calc(var(--radius) + 4px);
+
+            --shadow-2xs: var(--shadow-2xs);
+            --shadow-xs: var(--shadow-xs);
+            --shadow-sm: var(--shadow-sm);
+            --shadow: var(--shadow);
+            --shadow-md: var(--shadow-md);
+            --shadow-lg: var(--shadow-lg);
+            --shadow-xl: var(--shadow-xl);
+            --shadow-2xl: var(--shadow-2xl);
+        }
+
+        @layer base {
+            * {
+                @apply border-border outline-ring/50;
+            }
+            body {
+                @apply bg-background text-foreground;
+            }
+        }
+    </style>
+</head>
+
+<body class="h-full dark bg-background text-foreground antialiased">
+    <div class="min-h-full flex items-center justify-center p-6">
+        <div id="login-panel"
+            class="relative w-full max-w-md rounded-2xl border bg-card text-card-foreground shadow-2xl transition-opacity duration-200">
+            <div id="login-overlay"
+                class="absolute inset-0 z-20 hidden items-center justify-center rounded-2xl bg-card/70 backdrop-blur-sm">
+                <div
+                    class="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 text-sm text-card-foreground shadow-lg">
+                    <svg class="h-4 w-4 animate-spin text-cyan-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle class="opacity-30" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2">
+                        </circle>
+                        <path class="opacity-100" d="M21 12a9 9 0 00-9-9" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round"></path>
+                    </svg>
+                    <span>Signing in...</span>
+                </div>
+            </div>
+            <div class="px-6 py-5 border-b">
+                <div class="flex w-full h-auto items-center justify-center">
+                    <img src="{{ (root_path or '') ~ '/static/img/project.png' }}" alt="DVMProject"
+                        class="w-full max-w-[215px] h-auto object-contain mb-3" />
+                </div>
+                <p class="mt-1 text-sm text-muted-foreground">Sign in with a user account.</p>
+                <p class="mt-1 mb-2 text-xs text-muted-foreground">Host: {{ hostname }}</p>
+
+                <p class="mt-1 mb-1 text-sm text-yellow-400 px-1.5 py-0.5 rounded bg-red-500/20 font-bold text-center">
+                    ** UNAUTHORIZED ACCESS IS PROHIBITED **</p>
+            </div>
+
+            <form id="login-form" action="{{ root_path }}/login" method="post" class="px-6 py-5 space-y-4">
+                <input type="hidden" name="next" value="{{ next }}" />
+
+                {% if error %}
+                <div class="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                    {{ error }}
+                </div>
+                {% endif %}
+
+                <div>
+                    <label for="username" class="block text-xs font-medium mb-1">Username</label>
+                    <input id="username" name="username" type="text" autocomplete="username" required
+                        class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none 
+                            selection:bg-primary selection:text-primary-foreground 
+                            placeholder:text-muted-foreground 
+                            disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30 
+                            focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                            aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40" placeholder="Username" />
+                </div>
+
+                <div>
+                    <label for="password" class="block text-xs font-medium mb-1">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required
+                        class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none 
+                            selection:bg-primary selection:text-primary-foreground 
+                            placeholder:text-muted-foreground 
+                            disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30 
+                            focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                            aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40" placeholder="Password" />
+                </div>
+
+                <button id="login-submit" type="submit" 
+                    class="w-full inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                        focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                        disabled:pointer-events-none disabled:opacity-50 
+                        aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                        bg-primary text-primary-foreground hover:bg-primary/90 h-8 gap-1.5 rounded-md px-3">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const form = document.getElementById('login-form');
+            const panel = document.getElementById('login-panel');
+            const overlay = document.getElementById('login-overlay');
+            const submit = document.getElementById('login-submit');
+
+            if (!form || !panel || !overlay || !submit) return;
+
+            const setLoading = (isLoading) => {
+                panel.classList.toggle('opacity-70', isLoading);
+                panel.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+                overlay.classList.toggle('hidden', !isLoading);
+                overlay.classList.toggle('flex', isLoading);
+                submit.disabled = isLoading;
+            };
+
+            form.addEventListener('submit', function () {
+                setLoading(true);
+            });
+
+            // If browser restores this page from history cache, clear loading UI.
+            window.addEventListener('pageshow', function () {
+                setLoading(false);
+            });
+        })();
+    </script>
+</body>
+</html>

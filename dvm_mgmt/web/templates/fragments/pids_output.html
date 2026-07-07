@@ -1,0 +1,70 @@
+<!-- fragments/pids_output.html -->
+{% if error %}
+<div class="rounded-lg border border-red-700/50 bg-red-900/20 px-4 py-3 text-sm text-red-300">
+    {{ error }}
+</div>
+{% else %}
+<div class="space-y-4">
+    <div class="flex items-center justify-between gap-3 text-xs text-slate-500">
+        <p>
+            <span class="text-xs {{ 'text-green-400' if has_running else 'text-red-400' }}">
+                {% if has_running %}Running services detected{% else %}No matching service processes found{% endif %}
+            </span>
+        </p>
+    </div>
+
+    {% for service in services %}
+    <div class="rounded-xl border bg-card/40 overflow-hidden shadow-2xl">
+        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b">
+            <div>
+                <h3 class="text-sm font-semibold text-foreground">
+                    {% if service.name == 'dvmfne' %}FNE (dvmfne)
+                    {% elif service.name == 'dvmlas' %}BeOn (dvmlas)
+                    {% elif service.name == 'dvmrc' %}SmartConnect (dvmrc)
+                    {% elif service.name == 'sysview' %}SysView (sysview)
+                    {% else %}{{ service.name }}{% endif %}
+                </h3>
+                <p class="text-xs text-muted-foreground">State: <span class="text-foreground">{{
+                        service.state.capitalize() }}</span></p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-muted-foreground">PID count</p>
+                <p class="text-sm font-semibold text-foreground">{{ service.count }}</p>
+            </div>
+        </div>
+
+        {% if service.instances %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <thead class="text-left text-xs font-semibold text-foreground uppercase tracking-wider border-b">
+                    <tr>
+                        <th class="bg-card pt-2 pb-2 text-left px-4 py-2">PID</th>
+                        <th class="bg-card pt-2 pb-2 text-left px-4 py-2">Started</th>
+                        <th class="bg-card pt-2 pb-2 text-left px-4 py-2">Elapsed</th>
+                        <th class="bg-card pt-2 pb-2 text-left px-4 py-2">CPU</th>
+                        <th class="bg-card pt-2 pb-2 text-left px-4 py-2">Memory</th>
+                        <th class="bg-card pt-2 pb-2 text-left px-4 py-2">Command</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    {% for instance in service.instances %}
+                    <tr class="hover:bg-muted/40">
+                        <td class="px-4 py-2 text-foreground font-mono">{{ instance.pid }}</td>
+                        <td class="px-4 py-2 text-muted-foreground font-mono">{{ instance.started_at or '—' }}</td>
+                        <td class="px-4 py-2 text-muted-foreground font-mono">{{ instance.elapsed or '—' }}</td>
+                        <td class="px-4 py-2 text-muted-foreground">{{ '%.1f' % (instance.cpu_percent or 0) }}%</td>
+                        <td class="px-4 py-2 text-muted-foreground">{{ '%.1f' % (instance.memory_mb or 0) }} MB</td>
+                        <td class="px-4 py-2 text-muted-foreground font-mono break-all">{{ instance.cmdline or '' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="px-4 py-3 text-xs text-muted-foreground">No processes found for this service.</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

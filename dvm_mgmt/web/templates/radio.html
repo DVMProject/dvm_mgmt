@@ -1,0 +1,106 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+{% extends "base.html" %}
+{% block title %}Radio IDs{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-5 py-4">
+        <div class="flex items-center justify-center w-9 h-9 rounded-lg shrink-0">
+            {% set page_icon_d = "M3.75 7.5l16.5-4.125M12 6.75c-2.708 0-5.363.224-7.948.655C2.956 7.58 2.25 8.507 2.25 9.574v9.176A2.25 2.25 0 004.5 21h15a2.25 2.25 0 002.25-2.25V9.574c0-1.067-.706-1.994-1.802-2.169A48.329 48.329 0 0012 6.75zm-1.683 6.443l-.007.005-.052.036a.53.53 0 00-.082.06.614.614 0 00-.171.403v.207a.612.612 0 00.377.566l.13.054.015.007 2.116.873a2.107 2.107 0 01-.189.422.75.75 0 00.272 1.027.75.75 0 001.028-.273 3.6 3.6 0 00.315-.702l1.416.585a.612.612 0 00.832-.573v-.573a.612.612 0 00-.361-.559l-.014-.007-.13-.06-3.495-1.44a.512.512 0 00-.2-.04.516.516 0 00-.2.04z" %}
+            <svg class="w-9 h-9 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="{{ page_icon_d }}" />
+            </svg>
+        </div>
+        <div>
+            <h1 class="text-xl font-bold text-foreground">Radio ID Commands</h1>
+            <p class="mt-1 text-sm text-muted-foreground">Send inhibit, uninhibit, check, and page commands to radios via FNE.</p>
+        </div>
+    </div>
+
+    <!-- Radio Command Panels -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {% set commands = [
+            ("inhibit", "Inhibit Radio", "Prevent a radio from accessing the system.", "red", "M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"),
+            ("uninhibit", "Uninhibit Radio", "Restore radio access to the system.", "green", "M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"),
+            ("check", "Check Radio", "Query radio registration status.", "blue", "M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"),
+            ("page", "Page Radio", "Send a page (call alert) to a radio.", "yellow", "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"),
+        ] %}
+
+        {% for cmd, title, desc, color, icon_d in commands %}
+        <div
+            class="bg-card rounded-xl border border-{{ color }}-900 hover:border-{{ color }}-700 shadow-2xl shadow-{{ color }}-900/20">
+            <div class="flex items-center gap-3 px-5 py-4 border-b">
+                <div
+                    class="flex items-center justify-center w-9 h-9 rounded-lg bg-{{ color }}-500/15 border border-{{ color }}-500/30 shrink-0">
+                    <svg class="w-5 h-5 text-{{ color }}-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_d }}" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-sm font-semibold text-foreground">{{ title }}</h2>
+                    <p class="text-xs text-muted-foreground">{{ desc }}</p>
+                </div>
+            </div>
+
+            <form hx-post="/api/radio/{{ cmd }}" hx-target="#radio-{{ cmd }}-result" hx-swap="innerHTML"
+                class="px-5 py-4 space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-muted-foreground mb-1">Radio ID <span
+                                class="text-red-400">*</span></label>
+                        <input type="number" name="rid" required min="1" placeholder="e.g. 1234567"
+                            class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none 
+                                selection:bg-primary selection:text-primary-foreground file:inline-flex 
+                                placeholder:text-muted-foreground 
+                                disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 
+                                md:text-sm dark:bg-input/30 
+                                focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                                aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-muted-foreground mb-1">Peer ID <span
+                                class="text-muted-foreground">(opt)</span></label>
+                        <input type="number" name="peer_id" min="1" placeholder="All peers"
+                            class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none 
+                                selection:bg-primary selection:text-primary-foreground file:inline-flex 
+                                placeholder:text-muted-foreground 
+                                disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 
+                                md:text-sm dark:bg-input/30 
+                                focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                                aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40" />
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button type="submit" 
+                        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-{{ color }}-600/80 hover:bg-{{ color }}-600
+                            text-white text-sm font-medium transition-colors">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                        </svg>
+                        Send {{ title }}
+                    </button>
+                </div>
+            </form>
+
+            <!-- Result area -->
+            <div id="radio-{{ cmd }}-result" class="px-5 pb-4 empty:hidden"></div>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+{% endblock %}

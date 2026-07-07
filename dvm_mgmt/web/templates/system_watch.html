@@ -1,0 +1,1426 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+{% extends "base.html" %}
+{% block title %}System Watch{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <!-- Header -->
+        <div class="flex items-center gap-3 px-5 py-4">
+            <div class="flex items-center justify-center w-9 h-9 rounded-lg shrink-0">
+                {% set page_icon_d = "M4.5 4.5h5.25v5.25H4.5V4.5zm9.75 0h5.25v5.25h-5.25V4.5zM4.5 14.25h5.25v5.25H4.5v-5.25zm9.75 0h5.25v5.25h-5.25v-5.25z" %}
+                <svg class="w-9 h-9 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="{{ page_icon_d }}" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-foreground">System Watch</h1>
+                <p class="mt-1 text-sm text-muted-foreground">Live peer status streamed from SysView.</p>
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span id="system-watch-connection" class="rounded-full border bg-card text-muted-foreground px-3 py-1.5">Connecting...</span>
+            <span id="system-watch-count" class="rounded-full border bg-card text-muted-foreground px-3 py-1.5">0 channels</span>
+            <span id="system-watch-last" class="rounded-full border bg-card text-muted-foreground px-3 py-1.5">No message received yet</span>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border bg-card shadow-2xl overflow-hidden">
+        <div class="border-b px-5 py-4">
+            <div class="flex flex-col gap-2 xl:flex-row xl:items-center xl:gap-3">
+                <div class="min-w-0 xl:flex-1">
+                    <label for="system-watch-filter" class="sr-only">Filter by peer ID or alias</label>
+                    <input id="system-watch-filter" type="text" placeholder="Filter by peer ID or alias"
+                        class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none 
+                            selection:bg-primary selection:text-primary-foreground file:inline-flex 
+                            placeholder:text-muted-foreground 
+                            disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 
+                            md:text-sm dark:bg-input/30 
+                            focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                            aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40" />
+                </div>
+                <div class="flex flex-wrap items-center gap-2 xl:shrink-0 xl:flex-nowrap">
+                    <label
+                        class="inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-slate-300 whitespace-nowrap">
+                        <input id="system-watch-grouped-only" type="checkbox"
+                            class="h-3.5 w-3.5 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/50" />
+                        <span>Grouped only</span>
+                    </label>
+                    <button id="system-watch-collapse-all" type="button" 
+                        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                            focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                            disabled:pointer-events-none disabled:opacity-50 
+                            aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                            border bg-background shadow-xs 
+                            hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                            h-8 gap-1.5 rounded-md px-2">Collapse all groups</button>
+                    <button id="system-watch-expand-all" type="button" 
+                        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                            focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                            disabled:pointer-events-none disabled:opacity-50 
+                            aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                            border bg-background shadow-xs 
+                            hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                            h-8 gap-1.5 rounded-md px-2">Expand all groups</button>
+                </div>
+                <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap text-[11px] uppercase tracking-[0.22em] text-slate-500 xl:shrink-0 xl:overflow-visible">
+                    <span class="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-slate-400">Idle</span>
+                    <span class="rounded-full border border-emerald-300/50 bg-emerald-500/35 px-2.5 py-1 text-emerald-300">Tx</span>
+                    <span class="rounded-full border border-purple-300/50 bg-purple-500/35 px-2.5 py-1 text-purple-200">Control</span>
+                    <span class="rounded-full border border-amber-300/50 bg-amber-500/35 px-2.5 py-1 text-amber-300">Stale</span>
+                    <span class="rounded-full border border-red-300/50 bg-red-500/35 px-2.5 py-1 text-red-300">Failed</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 lg:p-5">
+            <div id="system-watch-grid" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                <div class="rounded-2xl border border-dashed bg-card px-4 py-6 text-sm text-muted-foreground">
+                    Waiting for SysView...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const grid = document.getElementById('system-watch-grid');
+        const connection = document.getElementById('system-watch-connection');
+        const count = document.getElementById('system-watch-count');
+        const last = document.getElementById('system-watch-last');
+        const filterInput = document.getElementById('system-watch-filter');
+        const groupedOnlyInput = document.getElementById('system-watch-grouped-only');
+        const collapseAllButton = document.getElementById('system-watch-collapse-all');
+        const expandAllButton = document.getElementById('system-watch-expand-all');
+        if (!grid || !connection || !count || !last || !filterInput || !groupedOnlyInput || !collapseAllButton || !expandAllButton) {
+            return;
+        }
+
+        const rootPath = "{{ root_path | default('', true) }}".trim();
+        const normalizedRoot = (!rootPath || rootPath === '/') ? '' : rootPath;
+        const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsUrl = proto + '://' + window.location.host + normalizedRoot + '/ws/system-watch';
+        const tiles = new Map();
+        const peerAliases = new Map();
+        let ws = null;
+        let reconnectTimer = null;
+        let reconnectDelay = 1000;
+        let tileHeartbeatTimer = null;
+        let groupHeartbeatTimer = null;
+        let clientState = 'connecting';
+        let upstreamState = 'connecting';
+        let upstreamError = '';
+        let filterQuery = '';
+        let groupedOnly = false;
+        const collapsedPeers = new Set();
+        const initializedGroupedPeers = new Set();
+        const renderMinIntervalMs = 120;
+        const tileRefreshIntervalMs = 500;
+        const groupRefreshIntervalMs = 2000;
+        const tileCardBaseClass = 'js-tile-card flex h-full flex-col rounded-2xl border bg-slate-950/60 p-4 shadow-lg transition-colors';
+        const tileHeadingBaseClass = 'js-tile-heading mt-1 truncate text-base font-semibold';
+        const tileBadgeBaseClass = 'js-tile-badge shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]';
+        const tileToneBaseClass = 'js-tile-tone mt-1 font-semibold';
+        const tileStatusTagClass = 'js-status-tag rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-400';
+        let lastRenderAt = 0;
+        let renderScheduled = false;
+        let renderDirty = false;
+        let suppressBackgroundRenders = false;
+        let suppressedRenderPending = false;
+
+        /**
+         * @brief Escape a string for safe insertion into HTML content.
+         * This function replaces special characters with their corresponding HTML entities to prevent XSS vulnerabilities.
+         * @param {string} value - The input string to escape.
+         * @return {string} - The escaped string safe for HTML insertion.
+         */
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        /**
+         * @brief Pad a peer ID with leading zeros for consistent display.
+         * This function converts the input value to a number, truncates it to an integer, and pads it with leading zeros 
+         *  to ensure a fixed width of 9 characters. If the input value is not a finite number, it returns a default 
+         *  string of '000000000'.
+         * @param {string|number} value - The peer ID to pad.
+         * @return {string} - The padded peer ID as a string.
+         */
+        function padPeerId(value) {
+            const numeric = Number(value || 0);
+            if (!Number.isFinite(numeric)) {
+                return '000000000';
+            }
+            return String(Math.trunc(numeric)).padStart(9, '0');
+        }
+
+        /**
+         * @brief Safely access a value as an object.
+         * @param {any} value - The value to check and return as an object.
+         * @return {object} - The input value if it is a non-array object; otherwise, an empty object.
+         */
+        function safeObject(value) {
+            return (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+        }
+
+        /**
+         * @brief Safely interpret a value as a boolean.
+         * @param {any} value - The value to check and return as a boolean.
+         * @return {boolean} - True if the input value is strictly equal to true; otherwise, false.
+         */
+        function safeBool(value) {
+            return value === true;
+        }
+
+        /**
+         * @brief Get a human-readable label for the communication mode based on the payload state.
+         * This function checks the 'state' property of the payload and returns a corresponding label for known modes (DMR, P25, NXDN).
+         * If the state does not match any known mode, it returns 'UNKNOWN'.
+         * @param {object} payload - The payload object containing the state information.
+         * @return {string} - The label representing the communication mode.
+         */
+        function modeLabel(payload) {
+            const mode = Number(payload.state ?? -1);
+            if (mode === 1) return 'DMR';
+            if (mode === 2) return 'P25';
+            if (mode === 3) return 'NXDN';
+            return 'UNKNOWN';
+        }
+
+        /**
+         * @brief Get a human-readable label for the channel based on the payload information.
+         * @param {object} payload - The payload object containing channel information.
+         * @return {string} - A label representing the channel in the format "channelId-channelNo". If both channelId and 
+         *  channelNo are undefined, it returns '—'. If either is undefined, it uses '—' as a placeholder for the missing value.
+         */
+        function channelLabel(payload) {
+            const channelId = payload.channelId;
+            const channelNo = payload.channelNo;
+            if (channelId === undefined && channelNo === undefined) {
+                return '—';
+            }
+            return `${channelId ?? '—'}-${channelNo ?? '—'}`;
+        }
+
+        /**
+         * @brief Format a number as uppercase hexadecimal with fixed width.
+         * @param {number} value - The number to format.
+         * @param {number} width - The desired minimum width.
+         * @return {string} - Uppercase hexadecimal string padded with leading zeroes.
+         */
+        function fixedHex(value, width) {
+            const numeric = Number(value);
+            if (!Number.isFinite(numeric)) {
+                return '';
+            }
+
+            return Math.trunc(numeric).toString(16).toUpperCase().padStart(width, '0');
+        }
+
+        /**
+         * @brief Get a human-readable Site label based on network/site identifiers.
+         * @param {object} payload - The payload object containing p25NetId, sysId and siteId.
+         * @return {string} - Site label formatted as p25NetId:sysId / p25RfssId.siteId, or '—' when unavailable.
+         */
+        function siteLabel(payload) {
+            const p25NetId = fixedHex(payload.p25NetId, 5);
+            const p25RfssId = Number(payload.p25RfssId);
+            const sysId = fixedHex(payload.sysId, 3);
+            const siteId = Number(payload.siteId);
+
+            if (!p25NetId || !sysId || !Number.isFinite(p25RfssId) || !Number.isFinite(siteId)) {
+                return '—';
+            }
+
+            return `${p25NetId}:${sysId} / ${Math.trunc(p25RfssId)}.${Math.trunc(siteId)}`;
+        }
+
+        /**
+         * @brief Inherit control-peer network/site identifiers for a CC-VC tile payload.
+         * @param {object} tilePayload - The tile payload that will be displayed.
+         * @param {object} controlPayload - The control-peer payload for the group.
+         * @return {object} - A merged payload with inherited control identifiers.
+         */
+        function inheritControlPeerNetworkData(tilePayload, controlPayload) {
+            const normalizedTilePayload = safeObject(tilePayload);
+            const normalizedControlPayload = safeObject(controlPayload);
+            const mergedPayload = Object.assign({}, normalizedTilePayload);
+
+            ["p25NetId", "p25RfssId", "sysId", "siteId"].forEach((key) => {
+                if (Object.prototype.hasOwnProperty.call(normalizedControlPayload, key)) {
+                    mergedPayload[key] = normalizedControlPayload[key];
+                }
+            });
+
+            return mergedPayload;
+        }
+
+        /**
+         * @brief Format a time difference in seconds into a human-readable relative string.
+         * @param {number} secondsAgo - The time difference in seconds.
+         * @return {string} - A human-readable string representing the relative time.
+         */
+        function formatRelative(secondsAgo) {
+            if (secondsAgo < 1) return 'just now';
+            if (secondsAgo < 60) return `${Math.round(secondsAgo)}s ago`;
+            const minutes = Math.floor(secondsAgo / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            return `${hours}h ago`;
+        }
+
+        /**
+         * @brief Generate a sort key for a channel entry.
+         * @param {object} entry - The channel entry object.
+         * @return {Array} - An array representing the sort key for the channel entry.
+         */
+        function channelSortKey(entry) {
+            const payload = safeObject(entry.payload);
+            const channelId = Number(payload.channelId ?? -1);
+            const channelNo = Number(payload.channelNo ?? -1);
+            const uniqueId = Number(entry.uniqueId ?? entry.peerId ?? 0);
+            return [channelId, channelNo, uniqueId, String(entry.tileKey || '')];
+        }
+
+        /**
+         * @brief Compare two channel entries for sorting purposes.
+         * This function compares two channel entries first by their peer IDs, and if those are equal, it compares them based on 
+         *  their channel information using the channelSortKey function.
+         * @param {object} left - The first channel entry to compare.
+         * @param {object} right - The second channel entry to compare.
+         * @return {number} - A negative number if the left entry should come before the right entry, a positive number if the 
+         *  left entry should come after the right entry, or zero if they are considered equal in sorting order.
+         */
+        function compareTiles(left, right) {
+            const leftPeer = Number(left.peerId || 0);
+            const rightPeer = Number(right.peerId || 0);
+            if (leftPeer !== rightPeer) {
+                return leftPeer - rightPeer;
+            }
+
+            const leftKey = channelSortKey(left);
+            const rightKey = channelSortKey(right);
+            for (let index = 0; index < leftKey.length; index += 1) {
+                if (leftKey[index] < rightKey[index]) {
+                    return -1;
+                }
+                if (leftKey[index] > rightKey[index]) {
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        /**
+         * @brief Determine if a channel entry is control-capable based on its payload properties.
+         * @param {object} payload - The payload object containing channel properties.
+         * @return {boolean} - True if the channel is control-capable; otherwise, false.
+         */
+        function isControlCapable(payload) {
+            return [payload.dmrTSCCEnable, payload.p25CtrlEnable, payload.nxdnCtrlEnable].some(safeBool);
+        }
+
+        /**
+         * @brief Extract referenced peer IDs from a control channel entry's payload.
+         * This function looks for a 'vcChannels' property in the payload, which is expected to be an array of channel 
+         *  entries. It then collects the unique peer IDs referenced in those channels that are valid according to the 
+         *  provided set of valid peer IDs.
+         * @param {object} payload - The payload object containing channel properties.
+         * @param {Set<number>} validPeerIds - A set of valid peer IDs to filter the referenced peer IDs.
+         * @return {Array<number>} - An array of unique referenced peer IDs sorted in ascending order.
+         */
+        function controlChannelPeerIds(payload, validPeerIds) {
+            const vcChannels = safeObject(payload).vcChannels;
+            if (!Array.isArray(vcChannels)) {
+                return [];
+            }
+
+            const referencedPeerIds = new Set();
+            vcChannels.forEach((entry) => {
+                if (!entry || typeof entry !== 'object') {
+                    return;
+                }
+
+                const referencedPeerId = Number(entry.peerId || 0);
+                if (Number.isFinite(referencedPeerId) && referencedPeerId > 0 && validPeerIds.has(referencedPeerId)) {
+                    referencedPeerIds.add(referencedPeerId);
+                }
+            });
+
+            return Array.from(referencedPeerIds).sort((left, right) => left - right);
+        }
+
+        /**
+         * @brief Determine if a control channel tile should be hidden based on its entry properties.
+         * @param {object} entry - The channel entry object containing properties such as peerId, uniqueId, and payload.
+         * @return {boolean} - True if the control channel tile should be hidden; otherwise, false.
+         */
+        function shouldHideControlChannelTile(entry) {
+            const payload = safeObject(entry.payload);
+            const peerId = Number(entry.peerId || 0);
+            const uniqueId = Number(entry.uniqueId || 0);
+
+            if (uniqueId === peerId) {
+                return false;
+            }
+
+            if (!Object.prototype.hasOwnProperty.call(payload, 'peerId')) {
+                return false;
+            }
+
+            return Number(payload.peerId || 0) > 0;
+        }
+
+        /**
+         * @brief Determine if a channel entry should be removed from display due to a failed state.
+         * @param {object} entry - The channel entry object containing properties such as payload and lastSeen.
+         * @param {number} nowSeconds - The current time in seconds used to calculate the age of the entry.
+         * @return {boolean} - True if the channel entry should be removed due to a failed state; otherwise, false.
+         */
+        function shouldRemoveFailedTile(entry, nowSeconds) {
+            const lastSeen = Number(entry.lastSeen || 0);
+            const age = lastSeen ? Math.max(0, nowSeconds - lastSeen) : 0;
+            return age > 300;
+        }
+
+        /**
+         * @brief Build display groups from ordered tiles.
+         * @param {Array<object>} orderedTiles - An array of ordered tile objects.
+         * @return {Array<object>} - An array of display group objects.
+         */
+        function buildDisplayGroups(orderedTiles) {
+            const validPeerIds = new Set(
+                orderedTiles
+                    .map((entry) => Number(entry.peerId || 0))
+                    .filter((peerId) => Number.isFinite(peerId) && peerId > 0)
+            );
+
+            const peerGroups = new Map();
+            orderedTiles.forEach((entry) => {
+                const peerId = Number(entry.peerId || 0);
+                const group = peerGroups.get(peerId) || [];
+                group.push(entry);
+                peerGroups.set(peerId, group);
+            });
+
+            const controlReferences = new Map();
+            orderedTiles.forEach((entry) => {
+                const peerId = Number(entry.peerId || 0);
+                if (!Number.isFinite(peerId) || peerId <= 0 || !isControlCapable(safeObject(entry.payload))) {
+                    return;
+                }
+
+                const referencedPeerIds = controlChannelPeerIds(entry.payload, validPeerIds).filter((referencedPeerId) => referencedPeerId !== peerId);
+                if (referencedPeerIds.length) {
+                    controlReferences.set(peerId, referencedPeerIds);
+                }
+            });
+
+            const consumedPeerIds = new Set();
+            const displayGroups = [];
+            Array.from(peerGroups.keys()).sort((left, right) => left - right).forEach((peerId) => {
+                if (consumedPeerIds.has(peerId)) {
+                    return;
+                }
+
+                const entries = (peerGroups.get(peerId) || []).filter((entry) => !shouldHideControlChannelTile(entry));
+                const referencedPeerIds = controlReferences.get(peerId) || [];
+                const ccVcPeerIds = new Set();
+                referencedPeerIds.forEach((referencedPeerId) => {
+                    if (referencedPeerId === peerId || consumedPeerIds.has(referencedPeerId)) {
+                        return;
+                    }
+
+                    const referencedEntries = peerGroups.get(referencedPeerId);
+                    if (!referencedEntries || !referencedEntries.length) {
+                        return;
+                    }
+
+                    entries.push(...referencedEntries);
+                    ccVcPeerIds.add(referencedPeerId);
+                    consumedPeerIds.add(referencedPeerId);
+                });
+
+                consumedPeerIds.add(peerId);
+                entries.sort(compareTiles);
+                displayGroups.push({
+                    groupPeerId: peerId,
+                    entries,
+                    ccVcPeerIds: Array.from(ccVcPeerIds),
+                });
+            });
+
+            return displayGroups;
+        }
+
+        /**
+         * @brief Normalize a filter value for comparison.
+         * @param {string} value - The value to normalize.
+         * @return {string} - The normalized filter value.
+         */
+        function normalizedFilterValue(value) {
+            return String(value || '').trim().toLowerCase();
+        }
+
+        /**
+         * @brief Get the alias for a given peer ID.
+         * @param {number} peerId - The peer ID to get the alias for.
+         * @return {string} - The alias for the peer ID.
+         */
+        function peerAlias(peerId) {
+            return peerAliases.get(Number(peerId || 0)) || '';
+        }
+
+        /**
+         * @brief Normalize a name value for comparison.
+         * @param {string} value - The value to normalize.
+         * @return {string} - The normalized name value.
+         */
+        function normalizedNameValue(value) {
+            return String(value || '').trim();
+        }
+
+        /**
+         * @brief Determine if a peer name is descriptive.
+         * @param {string} value - The peer name to check.
+         * @param {number} peerId - The peer ID associated with the name.
+         * @return {boolean} - True if the peer name is descriptive; otherwise, false.
+         */
+        function isDescriptivePeerName(value, peerId) {
+            const name = normalizedNameValue(value);
+            if (!name) {
+                return false;
+            }
+
+            const rawPeerId = String(Number(peerId || 0));
+            const paddedPeerId = padPeerId(peerId);
+            if (name === rawPeerId || name === paddedPeerId) {
+                return false;
+            }
+
+            return true;
+        }
+
+        /**
+         * @brief Determine if a peer matches the current filter query.
+         * @param {number} peerId - The peer ID to check.
+         * @param {Array<object>} peerTiles - An array of peer tile objects.
+         * @return {boolean} - True if the peer matches the filter query; otherwise, false.
+         */
+        function peerMatchesFilter(peerId, peerTiles) {
+            if (!filterQuery) {
+                return true;
+            }
+
+            const numericPeerId = Number(peerId || 0);
+            const rawPeerId = String(numericPeerId);
+            const paddedPeerId = padPeerId(numericPeerId);
+            const alias = normalizedFilterValue(peerAlias(numericPeerId));
+            if (rawPeerId.includes(filterQuery) || paddedPeerId.includes(filterQuery) || alias.includes(filterQuery)) {
+                return true;
+            }
+
+            return peerTiles.some((entry) => normalizedFilterValue(peerName(entry)).includes(filterQuery));
+        }
+
+        /**
+         * @brief Get the status summary for a channel entry.
+         * @param {object} entry - The channel entry object containing properties such as payload and lastSeen.
+         * @param {number} nowSeconds - The current time in seconds used to calculate the age of the entry.
+         * @return {object} - The status summary object for the channel entry.
+         */
+        function statusSummary(entry, nowSeconds) {
+            const payload = safeObject(entry.payload);
+            const modem = safeObject(payload.modem);
+            const lastSeen = Number(entry.lastSeen || 0);
+            const age = lastSeen ? Math.max(0, nowSeconds - lastSeen) : 0;
+            const controlFlags = [payload.dmrCC, payload.p25CC, payload.nxdnCC].some(safeBool);
+            const enhancedVoice = !controlFlags && [payload.dmrTSCCEnable, payload.p25CtrlEnable, payload.nxdnCtrlEnable].some(safeBool);
+            const txActive = safeBool(payload.tx);
+            const vControl = safeBool(payload.vControl);
+            const lastDstId = Number(payload.lastDstId || 0);
+            const lastSrcId = Number(payload.lastSrcId || 0);
+            const txControlData = txActive && enhancedVoice && lastDstId === 0 && lastSrcId === 0;
+            const failed = age > 30;
+            const stale = !failed && age > 8;
+            const v24Tag = modem.v24Connected === true ? 'V.24 Connected' : 'No V.24 or V.24 Disconnected';
+
+            if (failed) {
+                return {
+                    label: 'FAILED',
+                    badgeClass: 'border-red-300/50 bg-red-500/35 text-red-300',
+                    shellClass: 'border-red-300/50 bg-red-500/35 shadow-red-950/20',
+                    textClass: 'text-red-100',
+                    toneClass: 'text-red-300',
+                    tags: ['No updates > 30s', v24Tag],
+                };
+            }
+
+            if (stale) {
+                return {
+                    label: enhancedVoice ? 'ENH. VOICE' : (vControl ? 'CC-VC' : 'VOICE/CONV'),
+                    badgeClass: 'border-amber-300/50 bg-amber-500/35 text-amber-300',
+                    shellClass: 'border-amber-300/50 bg-amber-500/35 shadow-xl shadow-amber-950/20',
+                    textClass: 'text-slate-50',
+                    toneClass: 'text-amber-300',
+                    tags: ['No recent updates', v24Tag],
+                };
+            }
+
+            if (controlFlags) {
+                return {
+                    label: 'CONTROL',
+                    badgeClass: 'border-purple-300/50 bg-purple-500/35 text-purple-200',
+                    shellClass: 'border-purple-300/50 bg-purple-500/35 shadow-xl shadow-purple-950/20',
+                    textClass: 'text-slate-50',
+                    toneClass: 'text-purple-200',
+                    tags: ['Control Channel', v24Tag],
+                };
+            }
+
+            if (txControlData) {
+                return {
+                    label: 'CONTROL DATA',
+                    badgeClass: 'border-purple-300/50 bg-purple-500/35 text-purple-200',
+                    shellClass: 'border-purple-300/50 bg-purple-500/35 shadow-xl shadow-purple-950/20',
+                    textClass: 'text-slate-50',
+                    toneClass: 'text-purple-200',
+                    tags: ['TX', 'Control Data', v24Tag],
+                };
+            }
+
+            if (txActive) {
+                return {
+                    label: enhancedVoice ? 'ENH. VOICE' : (vControl ? 'CC-VC' : 'VOICE/CONV'),
+                    badgeClass: 'border-emerald-300/50 bg-emerald-500/35 text-emerald-300',
+                    shellClass: 'border-emerald-300/50 bg-emerald-500/35 shadow-xl shadow-emerald-950/20',
+                    textClass: 'text-emerald-50',
+                    toneClass: 'text-emerald-300',
+                    tags: ['TX'].concat([v24Tag]),
+                };
+            }
+
+            return {
+                label: enhancedVoice ? 'ENH. VOICE' : (vControl ? 'CC-VC' : 'VOICE/CONV'),
+                badgeClass: 'border-slate-700 bg-slate-950/60 text-slate-400',
+                shellClass: 'border-slate-800 bg-slate-950/70',
+                textClass: 'text-slate-100',
+                toneClass: 'text-slate-400',
+                tags: ['Idle'].concat([v24Tag]),
+            };
+        }
+
+        /**
+         * @brief Build HTML markup for tile status tags.
+         * @param {Array<string>} tags - An array of status tag labels.
+         * @return {string} - HTML markup for the status tags.
+         */
+        function statusTagMarkup(tags) {
+            return (Array.isArray(tags) ? tags : []).map((tag) =>
+                `<span class="${tileStatusTagClass}">${escapeHtml(tag)}</span>`
+            ).join('');
+        }
+
+        /**
+         * @brief Build a compact signature for tile status-dependent styling.
+         * @param {object} summary - The status summary object.
+         * @param {string} label - The computed tile status label.
+         * @param {Array<string>} tags - The computed tile status tags.
+         * @return {string} - Signature used to skip redundant DOM updates.
+         */
+        function statusSignature(summary, label, tags) {
+            return [
+                String(label || ''),
+                String(summary.badgeClass || ''),
+                String(summary.shellClass || ''),
+                String(summary.textClass || ''),
+                String(summary.toneClass || ''),
+                (Array.isArray(tags) ? tags : []).join('|'),
+            ].join('::');
+        }
+
+        /**
+         * @brief Get the name for a peer entry.
+         * @param {object} entry - The peer entry object containing properties such as payload and peerId.
+         * @return {string} - The resolved name for the peer entry.
+         */
+        function peerName(entry) {
+            const payload = safeObject(entry.payload);
+            const configuredAlias = peerAlias(entry.peerId);
+            const liveIdentity = normalizedNameValue(payload.identity);
+            const liveAlias = normalizedNameValue(payload.alias);
+
+            if (configuredAlias && !isDescriptivePeerName(liveIdentity, entry.peerId) && !isDescriptivePeerName(liveAlias, entry.peerId)) {
+                return configuredAlias;
+            }
+
+            if (isDescriptivePeerName(liveIdentity, entry.peerId)) {
+                return liveIdentity;
+            }
+
+            if (isDescriptivePeerName(liveAlias, entry.peerId)) {
+                return liveAlias;
+            }
+
+            return configuredAlias || `Peer ${padPeerId(entry.peerId)}`;
+        }
+
+        /**
+         * @brief Get the heading for a peer entry.
+         * @param {object} entry - The peer entry object containing properties such as payload and peerId.
+         * @return {string} - The resolved heading for the peer entry.
+         */
+        function peerHeading(entry) {
+            const resolvedName = normalizedNameValue(peerName(entry));
+            if (isDescriptivePeerName(resolvedName, entry.peerId)) {
+                return resolvedName;
+            }
+
+            return `Peer ${padPeerId(entry.peerId)}`;
+        }
+
+        /**
+         * @brief Load peer aliases from the server and update the peerAliases map.
+         * This function makes a fetch request to the server to retrieve peer aliases, processes the response, and 
+         *  updates the peerAliases map accordingly. It also schedules a re-render of the UI after updating the aliases.
+         */
+        async function loadPeerAliases() {
+            try {
+                const response = await fetch(normalizedRoot + '/api/system-watch/peer-aliases?system=both', {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+                const aliases = data && typeof data === 'object' ? data.aliases : null;
+                if (!aliases || typeof aliases !== 'object') {
+                    return;
+                }
+
+                peerAliases.clear();
+                Object.entries(aliases).forEach(([peerId, alias]) => {
+                    const numericPeerId = Number(peerId || 0);
+                    const cleanAlias = String(alias || '').trim();
+                    if (Number.isFinite(numericPeerId) && cleanAlias) {
+                        peerAliases.set(numericPeerId, cleanAlias);
+                    }
+                });
+
+                scheduleRender();
+            } catch (_err) {
+                // Alias lookup is best-effort; live status still renders without it.
+            }
+        }
+
+        /**
+         * @brief Render the UI based on the current state of tiles, connection status, and filter settings.
+         * This function processes the current tiles, applies sorting and filtering, and updates the DOM elements to reflect 
+         *  the current state of the system watch. It handles different connection states, displays appropriate messages when 
+         *  there are no active peers or when waiting for data, and generates the markup for each channel entry based on its 
+         *  status summary.
+         */
+        function render() {
+            const nowSeconds = Date.now() / 1000;
+            const orderedTiles = Array.from(tiles.values()).sort(compareTiles);
+            const activeTiles = orderedTiles.filter((entry) => !shouldRemoveFailedTile(entry, nowSeconds));
+            const displayGroups = buildDisplayGroups(activeTiles);
+
+            if (clientState === 'connected') {
+                connection.className = 'rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-300';
+                connection.textContent = 'Connected';
+            } else if (clientState === 'connecting') {
+                connection.className = 'rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-amber-300';
+                connection.textContent = 'Connecting...';
+            } else if (clientState === 'disconnected') {
+                connection.className = 'rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-red-300';
+                connection.textContent = upstreamError ? `Disconnected: ${upstreamError}` : 'Disconnected';
+            } else {
+                connection.className = 'rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-slate-300';
+                connection.textContent = 'Waiting...';
+            }
+
+            if (!orderedTiles.length) {
+                grid.innerHTML = '<div class="rounded-2xl border border-dashed bg-card px-4 py-6 text-sm text-muted-foreground">Waiting for SysView...</div>';
+                return;
+            }
+
+            if (!activeTiles.length) {
+                grid.innerHTML = '<div class="col-span-full rounded-2xl border border-dashed bg-card px-4 py-6 text-sm text-muted-foreground">No active peers.</div>';
+                return;
+            }
+
+            const filteredGroups = displayGroups.filter((group) =>
+                peerMatchesFilter(group.groupPeerId, group.entries)
+            );
+
+            const groupedEntries = [];
+            const singletonEntries = [];
+            filteredGroups.forEach((group) => {
+                if (group.entries.length > 1) {
+                    groupedEntries.push(group);
+                    if (!initializedGroupedPeers.has(group.groupPeerId)) {
+                        initializedGroupedPeers.add(group.groupPeerId);
+                        collapsedPeers.add(group.groupPeerId);
+                    }
+                    return;
+                }
+
+                if (!groupedOnly && group.entries.length === 1) {
+                    singletonEntries.push(group.entries[0]);
+                }
+            });
+
+            const visibleTileCount = groupedEntries.reduce((total, group) => total + group.entries.length, 0) + singletonEntries.length;
+            count.textContent = filterQuery
+                ? `${visibleTileCount} of ${orderedTiles.length} channels`
+                : `${visibleTileCount} channel${visibleTileCount === 1 ? '' : 's'}`;
+
+            if (!groupedEntries.length && !singletonEntries.length) {
+                grid.innerHTML = groupedOnly
+                    ? '<div class="col-span-full rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 px-4 py-6 text-sm text-slate-500">No grouped peers match the current filter.</div>'
+                    : '<div class="col-span-full rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 px-4 py-6 text-sm text-slate-500">No peers match the current filter.</div>';
+                collapseAllButton.disabled = true;
+                expandAllButton.disabled = true;
+                return;
+            }
+
+            collapseAllButton.disabled = groupedEntries.length === 0;
+            expandAllButton.disabled = groupedEntries.length === 0;
+
+            const tileMarkupForEntry = function (entry, labelOverride, payloadOverride, extraTags) {
+                const payload = safeObject(payloadOverride || entry.payload);
+                const summary = statusSummary(entry, nowSeconds);
+                const label = labelOverride || summary.label;
+                const extraTagList = Array.isArray(extraTags) ? extraTags : [];
+                const lastSeen = Number(entry.lastSeen || 0);
+                const lastDst = payload.lastDstId !== undefined ? String(payload.lastDstId).padStart(5, '0') : '—';
+                const lastSrc = payload.lastSrcId !== undefined ? String(payload.lastSrcId) : '—';
+                const grantElapsedTime = payload.grantElapsedTime !== undefined ? (Number(payload.grantElapsedTime) / 1000).toFixed(2) + 's' : '—';
+                const uniqueId = Number(entry.uniqueId || entry.peerId || 0);
+                const isPrimaryTile = uniqueId === Number(entry.peerId || 0);
+                const controlFlags = [payload.dmrCC, payload.p25CC, payload.nxdnCC].some(safeBool);
+                const hideTrafficIds = isPrimaryTile && controlFlags;
+                const tags = (summary.tags || []).concat(extraTagList);
+                const summarySig = statusSignature(summary, label, tags);
+                const trafficIdMarkup = hideTrafficIds ? '' : `
+                    <div class="rounded-xl bg-slate-950/50 px-3 py-2">
+                        <div class="text-slate-500">Last Destination ID</div>
+                        <div class="js-tile-tone js-last-dst-value ${tileToneBaseClass} ${summary.toneClass}">${escapeHtml(lastDst)}</div>
+                    </div>
+                    <div class="rounded-xl bg-slate-950/50 px-3 py-2">
+                        <div class="text-slate-500">Last Source ID</div>
+                        <div class="js-tile-tone js-last-src-value ${tileToneBaseClass} ${summary.toneClass}">${escapeHtml(lastSrc)}</div>
+                    </div>
+                    <div class="rounded-xl bg-slate-950/50 px-3 py-2">
+                        <div class="text-slate-500">Call Grant Time</div>
+                        <div class="js-tile-tone js-grant-elapsed-time-value ${tileToneBaseClass} ${summary.toneClass}">${escapeHtml(grantElapsedTime)}</div>
+                    </div>
+                `;
+
+                return `
+                    <article data-tile-key="${escapeHtml(entry.tileKey)}" data-label-override="${escapeHtml(labelOverride || '')}" data-extra-tags="${escapeHtml(extraTagList.join('|'))}" data-status-signature="${escapeHtml(summarySig)}" class="${tileCardBaseClass} ${summary.shellClass}">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">Peer ID ${padPeerId(entry.peerId)}</p>
+                                <h3 class="${tileHeadingBaseClass} ${summary.textClass}">${escapeHtml(peerHeading(entry))}</h3>
+                            </div>
+                            <span class="${tileBadgeBaseClass} ${summary.badgeClass}">${escapeHtml(label)}</span>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-3 gap-2 text-xs">
+                            <div class="rounded-xl bg-slate-950/50 px-3 py-2">
+                                <div class="text-slate-500">Mode</div>
+                                <div class="js-tile-tone js-mode-value ${tileToneBaseClass} ${summary.toneClass}">${escapeHtml(modeLabel(payload))}</div>
+                            </div>
+                            <div class="rounded-xl bg-slate-950/50 px-3 py-2">
+                                <div class="text-slate-500">Channel</div>
+                                <div class="js-tile-tone js-channel-value ${tileToneBaseClass} ${summary.toneClass}">${escapeHtml(channelLabel(payload))}</div>
+                            </div>
+                            <div class="rounded-xl bg-slate-950/50 px-3 py-2">
+                                <div class="text-slate-500">System / Site</div>
+                                <div class="js-tile-tone js-site-value ${tileToneBaseClass} ${summary.toneClass}">${escapeHtml(siteLabel(payload))}</div>
+                            </div>
+                            ${trafficIdMarkup}
+                        </div>
+
+                        <div class="mt-auto pt-3">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <div class="js-status-tags flex flex-wrap gap-1.5">${statusTagMarkup(tags)}</div>
+                                <span class="js-relative-time rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-400" data-last-seen="${lastSeen}"></span>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            };
+
+            const groupedMarkup = groupedEntries.map((group) => {
+                const peerId = group.groupPeerId;
+                const peerTiles = group.entries;
+                const ccVcPeerIds = new Set(group.ccVcPeerIds || []);
+                const primaryEntry = peerTiles.find((entry) => Number(entry.peerId || 0) === peerId) || peerTiles[0];
+                const controlPayload = safeObject(primaryEntry ? primaryEntry.payload : {});
+                const groupTitle = primaryEntry ? peerHeading(primaryEntry) : `Peer ${padPeerId(peerId)}`;
+                const alias = peerAlias(peerId);
+                const collapsed = collapsedPeers.has(peerId);
+                const tileMarkup = collapsed ? '' : peerTiles.map((entry) => {
+                    const tilePayload = safeObject(entry.payload);
+                    const tilePeerId = Number(entry.peerId || 0);
+                    const tileUniqueId = Number(entry.uniqueId || 0);
+                    const isReferencedPeerTile = ccVcPeerIds.has(Number(entry.peerId || 0)) && Number(entry.uniqueId || 0) === Number(entry.peerId || 0);
+                    const isVirtualOrUnassignedTile = isControlCapable(controlPayload) && tileUniqueId !== tilePeerId &&
+                        (!Object.prototype.hasOwnProperty.call(tilePayload, 'peerId') || Number(tilePayload.peerId || 0) === 0);
+                    const inheritedPayload = isReferencedPeerTile ? inheritControlPeerNetworkData(entry.payload, controlPayload) : null;
+                    const extraTags = isVirtualOrUnassignedTile ? ['Virtual or Unassigned Channel'] : [];
+                    return tileMarkupForEntry(entry, isReferencedPeerTile ? 'CC-VC' : '', inheritedPayload, extraTags);
+                }).join('');
+
+                return `
+                    <section class="col-span-full space-y-3 rounded-2xl border bg-slate-950/20 p-3 lg:p-4" data-peer-group="${peerId}">
+                        <div class="flex items-center justify-between gap-3 px-1 pb-3">
+                            <div>
+                                <h2 class="text-sm font-semibold text-foreground">${escapeHtml(groupTitle)}</h2>
+                                <p class="mt-1 text-xs text-muted-foreground">Peer ID ${padPeerId(peerId)}</p>
+                                ${alias && alias !== groupTitle ? `<p class="mt-1 text-xs text-cyan-400">Alias ${escapeHtml(alias)}</p>` : ''}
+                                <p class="mt-1 text-xs text-muted-foreground">${peerTiles.length} channel${peerTiles.length === 1 ? '' : 's'} sorted by channel ID and channel number</p>
+                            </div>
+                            <button type="button"
+                                class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                                    focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                                    disabled:pointer-events-none disabled:opacity-50 
+                                    aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                                    border bg-background shadow-xs 
+                                    hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                                    h-8 gap-1.5 rounded-md px-2"
+                                data-peer-group-toggle="${peerId}" aria-expanded="${collapsed ? 'false' : 'true'}">
+                                <svg class="h-4 w-4 text-foreground transition-transform ${collapsed ? 'rotate-180' : ''}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div data-peer-group-content="${peerId}" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 ${collapsed ? 'hidden' : ''}">
+                            ${tileMarkup}
+                        </div>
+                    </section>
+                `;
+            }).join('');
+
+            const singletonMarkup = singletonEntries.map((entry) => tileMarkupForEntry(entry)).join('');
+            grid.innerHTML = groupedMarkup + singletonMarkup;
+
+            refreshRelativeTimes();
+        }
+
+        /**
+         * @brief Refresh the relative time labels for each channel entry based on their last seen timestamps.
+         * This function iterates through all elements with the class 'js-relative-time', retrieves their
+         *  last seen timestamp from the 'data-last-seen' attribute, calculates the age of the entry, and updates the text 
+         *  content to show how long ago it was updated.
+         */
+        function refreshRelativeTimes() {
+            const nowSeconds = Date.now() / 1000;
+            grid.querySelectorAll('.js-relative-time').forEach((element) => {
+                const lastSeen = Number(element.getAttribute('data-last-seen') || 0);
+                const age = lastSeen ? Math.max(0, nowSeconds - lastSeen) : 0;
+                element.textContent = `Updated ${formatRelative(age)}`;
+            });
+        }
+
+        /**
+         * @brief Refresh tile status classes and labels without rebuilding group markup.
+         */
+        function refreshTileStates() {
+            const nowSeconds = Date.now() / 1000;
+            grid.querySelectorAll('article[data-tile-key]').forEach((tileElement) => {
+                const tileKey = String(tileElement.getAttribute('data-tile-key') || '');
+                if (!tileKey) {
+                    return;
+                }
+
+                const entry = tiles.get(tileKey);
+                if (!entry) {
+                    return;
+                }
+
+                const summary = statusSummary(entry, nowSeconds);
+                const payload = safeObject(entry.payload);
+                const labelOverride = String(tileElement.getAttribute('data-label-override') || '');
+                const extraTags = String(tileElement.getAttribute('data-extra-tags') || '')
+                    .split('|')
+                    .map((tag) => tag.trim())
+                    .filter((tag) => tag.length > 0);
+                const label = labelOverride || summary.label;
+                const tags = (summary.tags || []).concat(extraTags);
+                const nextSignature = statusSignature(summary, label, tags);
+
+                const relativeTimeElement = tileElement.querySelector('.js-relative-time');
+                if (relativeTimeElement) {
+                    relativeTimeElement.setAttribute('data-last-seen', String(Number(entry.lastSeen || 0)));
+                }
+
+                const modeElement = tileElement.querySelector('.js-mode-value');
+                if (modeElement) {
+                    modeElement.textContent = modeLabel(payload);
+                }
+
+                const channelElement = tileElement.querySelector('.js-channel-value');
+                if (channelElement) {
+                    channelElement.textContent = channelLabel(payload);
+                }
+
+                const siteElement = tileElement.querySelector('.js-site-value');
+                if (siteElement) {
+                    siteElement.textContent = siteLabel(payload);
+                }
+
+                const lastDstElement = tileElement.querySelector('.js-last-dst-value');
+                if (lastDstElement) {
+                    lastDstElement.textContent = payload.lastDstId !== undefined ? String(payload.lastDstId).padStart(5, '0') : '—';
+                }
+
+                const lastSrcElement = tileElement.querySelector('.js-last-src-value');
+                if (lastSrcElement) {
+                    lastSrcElement.textContent = payload.lastSrcId !== undefined ? String(payload.lastSrcId) : '—';
+                }
+
+                const grantElapsedTimeElement = tileElement.querySelector('.js-grant-elapsed-time-value');
+                if (grantElapsedTimeElement) {
+                    grantElapsedTimeElement.textContent = payload.grantElapsedTime !== undefined ? (Number(payload.grantElapsedTime) / 1000).toFixed(2) + 's' : '—';
+                }
+
+                if (tileElement.getAttribute('data-status-signature') === nextSignature) {
+                    return;
+                }
+
+                tileElement.setAttribute('data-status-signature', nextSignature);
+                tileElement.className = `${tileCardBaseClass} ${summary.shellClass}`;
+
+                const headingElement = tileElement.querySelector('.js-tile-heading');
+                if (headingElement) {
+                    headingElement.className = `${tileHeadingBaseClass} ${summary.textClass}`;
+                }
+
+                const badgeElement = tileElement.querySelector('.js-tile-badge');
+                if (badgeElement) {
+                    badgeElement.className = `${tileBadgeBaseClass} ${summary.badgeClass}`;
+                    badgeElement.textContent = label;
+                }
+
+                tileElement.querySelectorAll('.js-tile-tone').forEach((toneElement) => {
+                    toneElement.className = `${tileToneBaseClass} ${summary.toneClass}`;
+                });
+
+                const tagsElement = tileElement.querySelector('.js-status-tags');
+                if (tagsElement) {
+                    tagsElement.innerHTML = statusTagMarkup(tags);
+                }
+            });
+        }
+
+        /**
+         * @brief Set the collapsed state of a peer group in the DOM.
+         * @param {number} peerId - The peer ID of the group to update.
+         * @param {boolean} collapsed - Whether the group should be collapsed or expanded.
+         * @return {boolean} - True if the DOM was successfully updated; otherwise, false.
+         */
+        function setPeerGroupCollapsedInDom(peerId, collapsed) {
+            const toggle = grid.querySelector(`[data-peer-group-toggle="${peerId}"]`);
+            const content = grid.querySelector(`[data-peer-group-content="${peerId}"]`);
+            if (!toggle || !content) {
+                return false;
+            }
+
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            const icon = toggle.querySelector('svg');
+            if (icon) {
+                icon.classList.toggle('rotate-180', collapsed);
+            }
+            content.classList.toggle('hidden', collapsed);
+            return true;
+        }
+
+        /**
+         * @brief Determine if a group needs an immediate full render to materialize tile content.
+         * @param {number} peerId - The peer ID of the group to inspect.
+         * @return {boolean} - True when the group's tile container has no rendered tiles.
+         */
+        function groupNeedsInitialContentRender(peerId) {
+            const content = grid.querySelector(`[data-peer-group-content="${peerId}"]`);
+            if (!content) {
+                return true;
+            }
+
+            return !content.querySelector('article[data-tile-key]');
+        }
+
+        /**
+         * @brief Schedule a render of the UI, with optional immediate execution and suppression of background renders.
+         * This function manages the scheduling of UI renders to optimize performance and user experience. It can
+         *  suppress background renders when certain interactions are taking place (e.g., collapsing or expanding groups) 
+         *  and can also trigger immediate renders when necessary (e.g., when the filter input changes).
+         * @param {boolean} immediate - Whether to render immediately or schedule for later.
+         */
+        function scheduleRender(immediate) {
+            if (suppressBackgroundRenders && immediate !== true) {
+                suppressedRenderPending = true;
+                return;
+            }
+
+            if (immediate === true) {
+                renderScheduled = false;
+                renderDirty = false;
+                lastRenderAt = Date.now();
+                render();
+                return;
+            }
+
+            if (renderScheduled) {
+                renderDirty = true;
+                return;
+            }
+
+            renderScheduled = true;
+            const elapsed = Date.now() - lastRenderAt;
+            const delay = Math.max(0, renderMinIntervalMs - elapsed);
+
+            setTimeout(function () {
+                renderScheduled = false;
+                lastRenderAt = Date.now();
+                render();
+
+                if (renderDirty) {
+                    renderDirty = false;
+                    scheduleRender(false);
+                }
+            }, delay);
+        }
+
+        /**
+         * @brief Lock background renders to optimize performance during certain interactions.
+         * This function sets a flag to suppress background renders, which can help improve performance and user
+         *  experience during interactions that may trigger multiple rapid updates (e.g., collapsing or expanding groups). 
+         *  When background renders are locked, any scheduled renders will be marked as pending and will only execute 
+         *  once background renders are unlocked.
+         */
+        function lockBackgroundRenders() {
+            suppressBackgroundRenders = true;
+        }
+
+        /**
+         * @brief Unlock background renders and trigger any pending renders if necessary.
+         * This function clears the flag that suppresses background renders and checks if there are any pending
+         *  renders that were scheduled while background renders were locked. If there are pending renders, it will trigger 
+         *  a render immediately to ensure the UI is updated with the latest state.
+         */
+        function unlockBackgroundRenders() {
+            suppressBackgroundRenders = false;
+            if (suppressedRenderPending) {
+                suppressedRenderPending = false;
+                scheduleRender();
+            }
+        }
+
+        collapseAllButton.addEventListener('pointerdown', lockBackgroundRenders);
+        expandAllButton.addEventListener('pointerdown', lockBackgroundRenders);
+        window.addEventListener('pointerup', unlockBackgroundRenders, true);
+        window.addEventListener('pointercancel', unlockBackgroundRenders, true);
+
+        filterInput.addEventListener('input', function (event) {
+            filterQuery = normalizedFilterValue(event.target && event.target.value);
+            scheduleRender(true);
+        });
+
+        groupedOnlyInput.addEventListener('change', function (event) {
+            groupedOnly = safeBool(event.target && event.target.checked);
+            scheduleRender(true);
+        });
+
+        collapseAllButton.addEventListener('click', function () {
+            const groupedPeerIds = new Set();
+            buildDisplayGroups(Array.from(tiles.values()).sort(compareTiles)).forEach((group) => {
+                if (group.entries.length > 1) {
+                    groupedPeerIds.add(group.groupPeerId);
+                }
+            });
+
+            groupedPeerIds.forEach((peerId) => {
+                collapsedPeers.add(peerId);
+                setPeerGroupCollapsedInDom(peerId, true);
+            });
+        });
+
+        expandAllButton.addEventListener('click', function () {
+            collapsedPeers.clear();
+            let needsImmediateRender = false;
+            grid.querySelectorAll('[data-peer-group-toggle]').forEach((toggle) => {
+                const peerId = Number(toggle.getAttribute('data-peer-group-toggle') || 0);
+                if (Number.isFinite(peerId) && peerId > 0) {
+                    if (groupNeedsInitialContentRender(peerId)) {
+                        needsImmediateRender = true;
+                    }
+                    setPeerGroupCollapsedInDom(peerId, false);
+                }
+            });
+
+            if (needsImmediateRender) {
+                scheduleRender(true);
+            }
+        });
+
+        grid.addEventListener('click', function (event) {
+            const toggle = event.target && event.target.closest('[data-peer-group-toggle]');
+            if (!toggle) {
+                return;
+            }
+
+            const peerId = Number(toggle.getAttribute('data-peer-group-toggle') || 0);
+            if (!Number.isFinite(peerId) || peerId <= 0) {
+                return;
+            }
+
+            if (collapsedPeers.has(peerId)) {
+                collapsedPeers.delete(peerId);
+                if (groupNeedsInitialContentRender(peerId)) {
+                    scheduleRender(true);
+                } else {
+                    setPeerGroupCollapsedInDom(peerId, false);
+                }
+            } else {
+                collapsedPeers.add(peerId);
+                setPeerGroupCollapsedInDom(peerId, true);
+            }
+        });
+
+        /**
+         * @brief Update the status message displayed to the user based on the current connection state or events.
+         * @param {string} event - An optional event message to display; if not provided, a default waiting message will be shown.
+         */
+        function updateMessage(event) {
+            last.textContent = event ? event : 'Waiting for first update';
+        }
+
+        /**
+         * @brief Ingest a snapshot message from the server and update the tiles map accordingly.
+         * @param {object} message - The snapshot message object containing an array of tile entries and a generatedAt timestamp.
+         */
+        function ingestSnapshot(message) {
+            tiles.clear();
+            const items = Array.isArray(message.tiles) ? message.tiles : [];
+            items.forEach((entry) => {
+                if (!entry || typeof entry !== 'object') {
+                    return;
+                }
+                const tileKey = String(entry.tileKey || `${entry.peerId || 0}:${entry.uniqueId || 0}`);
+                tiles.set(tileKey, {
+                    tileKey,
+                    peerId: Number(entry.peerId || 0),
+                    uniqueId: Number(entry.uniqueId || 0),
+                    payload: safeObject(entry.payload),
+                    lastSeen: Number(entry.lastSeen || message.generatedAt || Date.now() / 1000),
+                });
+            });
+
+            scheduleRender();
+        }
+
+        /**
+         * @brief Ingest a peer tiles message from the server, updating existing tiles and removing specified tiles.
+         * @param {object} message - The peer tiles message object containing the peerId, an array of removedKeys, an array 
+         *  of tile entries, and a lastSeen timestamp.
+         */
+        function ingestPeerTiles(message) {
+            const peerId = Number(message.peerId || 0);
+            const removedKeys = Array.isArray(message.removedKeys) ? message.removedKeys : [];
+            let requiresFullRender = removedKeys.length > 0 || !grid.querySelector('article[data-tile-key]');
+            removedKeys.forEach((key) => tiles.delete(String(key)));
+
+            const items = Array.isArray(message.tiles) ? message.tiles : [];
+            items.forEach((entry) => {
+                if (!entry || typeof entry !== 'object') {
+                    return;
+                }
+                const tileKey = String(entry.tileKey || `${entry.peerId || 0}:${entry.uniqueId || 0}`);
+                const payload = safeObject(entry.payload);
+                const nextEntry = {
+                    tileKey,
+                    peerId: Number(entry.peerId || peerId),
+                    uniqueId: Number(entry.uniqueId || 0),
+                    payload,
+                    lastSeen: Number(entry.lastSeen || message.lastSeen || Date.now() / 1000),
+                };
+
+                const previousEntry = tiles.get(tileKey);
+                if (!previousEntry) {
+                    requiresFullRender = true;
+                } else {
+                    if (Number(previousEntry.peerId || 0) !== Number(nextEntry.peerId || 0) ||
+                        Number(previousEntry.uniqueId || 0) !== Number(nextEntry.uniqueId || 0)) {
+                        requiresFullRender = true;
+                    }
+
+                    // Visibility/grouping can change when control-tile payload shape changes.
+                    const previousHidden = shouldHideControlChannelTile(previousEntry);
+                    const nextHidden = shouldHideControlChannelTile(nextEntry);
+                    if (previousHidden !== nextHidden) {
+                        requiresFullRender = true;
+                    }
+                }
+
+                tiles.set(tileKey, nextEntry);
+            });
+
+            if (requiresFullRender) {
+                scheduleRender();
+                return;
+            }
+
+            refreshTileStates();
+            refreshRelativeTimes();
+        }
+
+        /**
+         * @brief Ingest a state message from the server, updating the connection status and error message as needed.
+         * @param {object} message - The state message object containing the connection state and an optional error message.
+         */
+        function ingestState(message) {
+            upstreamState = message.state || 'connecting';
+            upstreamError = message.error || '';
+            if (upstreamState === 'connected') {
+                updateMessage('Connected to SysView');
+            } else if (upstreamState === 'connecting') {
+                updateMessage('Connecting to SysView...');
+            } else if (upstreamState === 'disconnected') {
+                updateMessage(upstreamError ? `SysView websocket error: ${upstreamError}` : 'SysView websocket disconnected');
+            }
+            scheduleRender();
+        }
+
+        /**
+         * @brief Schedule a reconnection attempt to the WebSocket server with an exponential backoff delay.
+         * This function manages the scheduling of reconnection attempts when the WebSocket connection is lost.
+         *  It uses an exponential backoff strategy to increase the delay between reconnection attempts, up to a maximum 
+         *  delay of 10 seconds.
+         */
+        function scheduleReconnect() {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+            }
+            reconnectTimer = setTimeout(connect, reconnectDelay);
+            reconnectDelay = Math.min(Math.round(reconnectDelay * 1.5), 10000);
+        }
+
+        /**
+         * @brief Establish a WebSocket connection to the server and set up event listeners for connection events and messages.
+         * This function initializes the WebSocket connection to the server, updates the client state accordingly,
+         *  and sets up event listeners to handle open, message, close, and error events. It also manages the reconnection logic
+         *  in case the connection is lost.
+         */
+        function connect() {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+
+            clientState = 'connecting';
+            upstreamError = '';
+            scheduleRender();
+
+            ws = new WebSocket(wsUrl);
+
+            ws.addEventListener('open', function () {
+                reconnectDelay = 1000;
+                clientState = 'connected';
+                updateMessage('Browser websocket connected');
+                scheduleRender();
+            });
+
+            ws.addEventListener('message', function (event) {
+                const raw = String(event.data || '');
+                let message = null;
+                try {
+                    message = JSON.parse(raw);
+                } catch (err) {
+                    updateMessage('Received non-JSON websocket payload');
+                    return;
+                }
+
+                if (!message || typeof message !== 'object') {
+                    return;
+                }
+
+                if (message.type === 'system_watch_snapshot') {
+                    ingestSnapshot(message);
+                } else if (message.type === 'system_watch_peer_tiles') {
+                    ingestPeerTiles(message);
+                } else if (message.type === 'system_watch_state') {
+                    ingestState(message);
+                }
+            });
+
+            ws.addEventListener('close', function () {
+                clientState = 'disconnected';
+                updateMessage('Browser websocket disconnected');
+                scheduleRender();
+                scheduleReconnect();
+            });
+
+            ws.addEventListener('error', function () {
+                clientState = 'disconnected';
+                upstreamError = 'browser websocket error';
+                updateMessage('Browser websocket error');
+                scheduleRender();
+            });
+        }
+
+        scheduleRender(true);
+        loadPeerAliases();
+        connect();
+
+        tileHeartbeatTimer = setInterval(function () {
+            refreshTileStates();
+            refreshRelativeTimes();
+        }, tileRefreshIntervalMs);
+
+        groupHeartbeatTimer = setInterval(function () {
+            scheduleRender();
+        }, groupRefreshIntervalMs);
+
+        window.addEventListener('beforeunload', function () {
+            if (tileHeartbeatTimer) {
+                clearInterval(tileHeartbeatTimer);
+            }
+            if (groupHeartbeatTimer) {
+                clearInterval(groupHeartbeatTimer);
+            }
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+            }
+            if (ws) {
+                ws.close();
+            }
+        });
+    })();
+</script>
+{% endblock %}

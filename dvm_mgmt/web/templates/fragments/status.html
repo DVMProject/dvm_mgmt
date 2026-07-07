@@ -1,0 +1,85 @@
+<!-- fragments/status.html — rendered inline, no base extension -->
+{# Helper macro for spanning tree recursion — must be defined before first call #}
+{% macro _render_node(node, depth) %}
+<div class="{% if depth > 0 %}ml-{{ depth * 4 }}{% endif %}">
+    <span class="text-slate-500">{% if depth > 0 %}├─ {% endif %}</span>
+    <span class="text-cyan-400">{{ node.get('id', '?') }}</span>
+    <span class="text-slate-600"> / </span>
+    <span class="text-slate-400">{{ node.get('masterId', '?') }}</span>
+    <span class="text-slate-600"> — </span>
+    <span class="text-slate-300">{{ node.get('identity', '?') }}</span>
+</div>
+{% for child in node.get('children', []) | sort(attribute='id') %}
+{{ _render_node(child, depth + 1) }}
+{% endfor %}
+{% endmacro %}
+
+<div class="space-y-5">
+
+    <!-- Service tiles -->
+    <div>
+        <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Services</p>
+        <div class="grid grid-cols-3 gap-2">
+            {% for key, info in services.items() %}
+            {% if not (is_subprime and key in ['las', 'rc']) and not (key == 'sysview' and not system_watch_enabled) %}
+            <div class="flex flex-col gap-1 p-3 rounded-lg bg-card border shadow-2xl">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full shrink-0
+                       {{ 'bg-green-400' if info.state == 'running' else 'bg-red-400' }}"></span>
+                    <span class="text-xs font-bold uppercase text-card-foreground">{{ key }}</span>
+                </div>
+                <span class="text-xs {{ 'text-green-400' if info.state == 'running' else 'text-red-400' }}">
+                    {{ info.state.capitalize() }}
+                    {% if info.count > 1 %}({{ info.count }}){% endif %}
+                </span>
+                {% if info.instances %}
+                <div class="flex flex-col gap-0.5 mt-0.5">
+                    {% for inst in info.instances %}
+                    <span class="text-xs text-card-foreground">PID {{ inst.pid }}
+                        {%- if inst.memory_mb is defined %} · {{ '%.0f' % inst.memory_mb }}MB{% endif %}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% elif info.pid %}
+                <span class="text-xs text-card-foreground">PID {{ info.pid }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- FNE Stats -->
+    {% if stats and stats.get('success', True) %}
+    <div>
+        <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">FNE Statistics</p>
+        <div class="grid grid-cols-2 gap-2">
+            {% set stat_fields = [
+            ("Total Calls", stats.get('totalCallsProcessed', 'N/A')),
+            ("Call Collisions", stats.get('totalCallCollisions', 'N/A')),
+            ("Active Calls", stats.get('totalActiveCalls', 'N/A')),
+            ("Radio IDs", stats.get('ridTotalEntries', 'N/A')),
+            ("Talkgroups", stats.get('tgTotalEntries', 'N/A')),
+            ("Peers", stats.get('peerListTotalEntries', 'N/A')),
+            ] %}
+            {% for label, value in stat_fields %}
+            <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-card border">
+                <span class="text-xs text-muted-foreground">{{ label }}</span>
+                <span class="text-sm font-bold tabular-nums text-foreground">{{ value }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Spanning Tree -->
+    {% if spanning_tree %}
+    <div>
+        <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Network Topology</p>
+        <div
+            class="rounded-lg bg-card border px-4 py-3 font-mono text-xs text-muted-foreground overflow-y-auto shadow-2xl">
+            {% for node in spanning_tree %}{{ _render_node(node, 0) }}{% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>

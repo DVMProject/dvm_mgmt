@@ -1,0 +1,152 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+{% extends "base.html" %}
+{% block title %}Console{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-5 py-4">
+        <div class="flex items-center justify-center w-9 h-9 rounded-lg shrink-0">
+            {% set page_icon_d = "M8.25 6.75h7.5M8.25 10.5h7.5M8.25 14.25h4.5m-7.875 6h14.25A2.625 2.625 0 0021.75 17.625V6.375A2.625 2.625 0 0019.125 3.75H4.875A2.625 2.625 0 002.25 6.375v11.25A2.625 2.625 0 004.875 20.25z" %}
+            <svg class="w-9 h-9 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="{{ page_icon_d }}" />
+            </svg>
+        </div>
+        <div>
+            <h1 class="text-xl font-bold text-foreground">CLI Console</h1>
+            <p class="mt-1 text-sm text-muted-foreground">Run DVM Management CLI commands directly in the browser.</p>
+        </div>
+    </div>
+
+    <div class="bg-card rounded-xl border overflow-hidden shadow-2xl">
+        <div class="px-5 py-3.5 border-b text-xs text-muted-foreground">
+            Example commands: <span class="font-mono text-muted-foreground">show version</span>,
+            <span class="font-mono text-muted-foreground">show pids</span>,
+            <span class="font-mono text-muted-foreground">show peers --system both</span>,
+        </div>
+
+        <form id="console-form" class="p-5 border-b">
+            <div class="flex items-center gap-3">
+                <span class="text-foreground font-mono text-sm">&gt;</span>
+                <input type="text" name="command" autocomplete="off" placeholder="Enter CLI command" 
+                    class="flex-1 h-9 min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none 
+                        selection:bg-primary selection:text-primary-foreground file:inline-flex 
+                        placeholder:text-muted-foreground 
+                        disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 
+                        md:text-sm dark:bg-input/30 
+                        focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                        aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40"
+                    required />
+                <button type="submit" 
+                    class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                        focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                        disabled:pointer-events-none disabled:opacity-50 
+                        aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                        bg-primary text-primary-foreground hover:bg-primary/90 h-8 gap-1.5 rounded-md px-3">Run</button>
+            </div>
+        </form>
+
+        <div id="console-output" class="max-h-[58vh] overflow-auto p-5 bg-card/50">
+            <pre id="console-stream" class="text-xs text-foreground whitespace-pre font-mono">Console ready.</pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const output = document.getElementById('console-output');
+        const stream = document.getElementById('console-stream');
+        const form = document.getElementById('console-form');
+        const input = form ? form.querySelector('input[name="command"]') : null;
+        if (!output || !stream || !form || !input) {
+            return;
+        }
+
+        const rootPath = "{{ root_path | default('', true) }}".trim();
+        const normalizedRoot = (!rootPath || rootPath === "/") ? "" : rootPath;
+        const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsUrl = proto + '://' + window.location.host + normalizedRoot + '/ws/console';
+
+        let ws = null;
+
+        /**
+         * @brief Append text to the console output stream and scroll to the bottom.
+         * @param {string} text - The text to append to the console output stream.
+         */
+        function appendOutput(text) {
+            stream.textContent += text;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        /**
+         * @brief Append a status message to the console output stream, prefixed with a newline, and scroll to the bottom.
+         * @param {string} text - The status message to append to the console output stream.
+         */
+        function appendStatus(text) {
+            stream.textContent += text + '\n';
+            output.scrollTop = output.scrollHeight;
+        }
+
+        /**
+         * @brief Establish a WebSocket connection to the server and set up event listeners for connection events and messages.
+         * This function initializes the WebSocket connection to the server, updates the client state accordingly,
+         *  and sets up event listeners to handle open, message, close, and error events. It also manages the reconnection logic
+         *  in case the connection is lost.
+         */
+        function connect() {
+            ws = new WebSocket(wsUrl);
+
+            ws.addEventListener('open', function () {
+                appendStatus('[connected]');
+            });
+
+            ws.addEventListener('message', function (event) {
+                const normalized = String(event.data || '').replace(/\r(?!\n)/g, '\n');
+                appendOutput(normalized);
+            });
+
+            ws.addEventListener('close', function () {
+                appendStatus('[disconnected]');
+            });
+
+            ws.addEventListener('error', function () {
+                appendStatus('[websocket error]');
+            });
+        }
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const command = (input.value || '').trim();
+            const blocked = ['exit', 'quit', 'tui', 'talkgroup', 'shell', 'profile edit', 'profile edit-global', '--tail'];
+            const match = blocked.some(substring => command.toLowerCase().includes(substring));
+            if (match) {
+                appendStatus(`Command: '${command.toLowerCase()}' is disabled in browser console.`);
+                input.value = '';
+                input.focus();
+                return;
+            }
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                appendStatus('[not connected]');
+                return;
+            }
+            ws.send(command);
+            appendStatus('> ' + command);
+            input.value = '';
+            input.focus();
+        });
+
+        connect();
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+<!-- fragments/log_output.html -->
+{% for line in log_lines %}
+<div class="whitespace-pre-wrap text-slate-400 break-all">{{ line }}</div>
+{% else %}
+<span class="text-muted-foreground">No log lines found.</span>
+{% endfor %}
+<script>
+    (function () {
+        var el = document.getElementById('static-log-content');
+        if (el) el.scrollTop = el.scrollHeight;
+    })();
+</script>

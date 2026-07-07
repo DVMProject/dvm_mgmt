@@ -1,0 +1,221 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+{% extends "base.html" %}
+{% block title %}Logs{% endblock %}
+
+{% block content %}
+<div x-data="{
+        logType: 'system',
+        liveMode: false,
+        esSource: null,
+        filterText: '',
+        logLines: [],
+        maxLiveLines: 500,
+        nextLiveLineId: 0,
+
+        escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        },
+
+        stripAnsi(s) {
+            return String(s).replace(/\x1b\[[0-9;]*m/g, '');
+        },
+
+        highlightContent(escaped) {
+            let txt = escaped;
+            txt = txt.replace(/\bRID[:=\s]+(\d+)\b/gi, `RID <span class='text-emerald-300'>$1</span>`);
+            txt = txt.replace(/\bTG(?:ID)?[:=\s]+(\d+)\b/gi, `TG <span class='text-indigo-300'>$1</span>`);
+            txt = txt.replace(/\b(connected|registered|online|accepted|linked)\b/gi, `<span class='text-emerald-300'>$1</span>`);
+            txt = txt.replace(/\b(failed|denied|exception|error|unauthorized|disconnect(?:ed)?)\b/gi, `<span class='text-red-300'>$1</span>`);
+            txt = txt.replace(/\b(smartconnect|beon|las|rc|net)\b/gi, `<span class='text-cyan-300'>$1</span>`);
+            txt = txt.replace(/\b(STUN|CSBK)\b/g, `<span class='text-fuchsia-300'>$1</span>`);
+            txt = txt.replace(/\b(TERMINATOR_WITH_LC|TERMINATOR|TX_REL)\b/g, `<span class='text-emerald-300'>$1</span>`);
+            txt = txt.replace(/\b(LDU|HDU|VOICE|VCALL)\b/g, `<span class='text-cyan-700'>$1</span>`);
+            txt = txt.replace(/\bMSTR\b/g, `<span class='text-blue-300 font-semibold'>MSTR</span>`);
+            txt = txt.replace(/\bPEER\b/g, `<span class='text-cyan-300 font-semibold'>PEER</span>`);
+            txt = txt.replace(/\bSTP\b/g, `<span class='text-emerald-300 font-semibold'>STP</span>`);
+            txt = txt.replace(/\bREPL\b/g, `<span class='text-amber-300 font-semibold'>REPL</span>`);
+            txt = txt.replace(/\bNAK\b/g, `<span class='text-red-300 font-semibold'>NAK</span>`);
+
+            // Protocol suffix coloring: from token to end-of-line.
+            const suffix = txt.match(/\b(LDU1|LDU2|TSDU|TDU)\b/i);
+            if (suffix && suffix.index !== undefined) {
+                const token = suffix[1].toUpperCase();
+                const cls = (token === 'LDU1' || token === 'LDU2') ? 'text-cyan-700' : (token === 'TSDU' ? 'text-fuchsia-300' : 'text-emerald-300');
+                txt = txt.slice(0, suffix.index) + `<span class='${cls}'>` + txt.slice(suffix.index) + `</span>`;
+            }
+            return txt;
+        },
+
+        formatLine(raw) {
+            const clean = this.stripAnsi(raw);
+            const tsLevel = clean.match(/^(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[\.,]\d+)?)(\s+)([A-Za-z]:)(\s*)(.*)$/);
+            if (tsLevel) {
+                const ts = tsLevel[1];
+                const sep = tsLevel[2] || ' ';
+                const level = (tsLevel[3] || '').toUpperCase();
+                const post = tsLevel[4] || '';
+                const rest = tsLevel[5] || '';
+
+                const levelClass = level === 'W:' ? 'text-amber-300 font-semibold'
+                : level === 'E:' ? 'text-red-300 font-semibold'
+                : level === 'I:' ? 'text-slate-400'
+                : level === 'D:' ? 'text-blue-300 font-semibold'
+                : level === 'U:' ? 'text-emerald-300 font-semibold'
+                : 'text-slate-400';
+
+                const prefix = `<span class='${levelClass}'>${this.escapeHtml(ts + sep + level)}</span>${this.escapeHtml(post)}`;
+                return prefix + this.highlightContent(this.escapeHtml(rest));
+            }
+
+            const levelOnly = clean.match(/^([A-Za-z]:)(\s*)(.*)$/);
+            if (levelOnly) {
+                const level = (levelOnly[1] || '').toUpperCase();
+                const post = levelOnly[2] || '';
+                const rest = levelOnly[3] || '';
+                const levelClass = level === 'W:' ? 'text-amber-300 font-semibold'
+                : level === 'E:' ? 'text-red-300 font-semibold'
+                : level === 'I:' ? 'text-slate-400'
+                : level === 'D:' ? 'text-blue-300 font-semibold'
+                : level === 'U:' ? 'text-emerald-300 font-semibold'
+                : 'text-slate-400';
+                const prefix = `<span class='${levelClass}'>${this.escapeHtml(level)}</span>${this.escapeHtml(post)}`;
+                return prefix + this.highlightContent(this.escapeHtml(rest));
+            }
+
+            return `<span class='text-slate-400'>${this.highlightContent(this.escapeHtml(clean))}</span>`;
+        },
+
+        startLive() {
+            this.logLines = [];
+            this.nextLiveLineId = 0;
+            if (this.esSource) this.esSource.close();
+            this.esSource = new EventSource('/stream/logs/' + this.logType);
+            this.esSource.onmessage = (e) => {
+                if (!e.data || e.data === 'ping') return;
+                if (!this.filterText || e.data.toLowerCase().includes(this.filterText.toLowerCase())) {
+                    this.logLines.push({ id: this.nextLiveLineId++, text: e.data });
+                    if (this.logLines.length > this.maxLiveLines) {
+                        this.logLines.splice(0, this.logLines.length - this.maxLiveLines);
+                    }
+                }
+
+                this.$nextTick(() => {
+                    const el = document.getElementById('live-log-output');
+                    if (el) el.scrollTop = el.scrollHeight;
+                });
+            };
+            this.esSource.addEventListener('heartbeat', () => {});
+        },
+
+        stopLive() {
+            if (this.esSource) { this.esSource.close(); this.esSource = null; }
+        },
+
+        toggleLive() {
+            this.liveMode = !this.liveMode;
+            if (this.liveMode) this.startLive();
+            else this.stopLive();
+        },
+    }" @beforeunload.window="stopLive()" class="space-y-6 h-full flex flex-col">
+    <!-- Header -->
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-3 px-5 py-4">
+            <div class="flex items-center justify-center w-9 h-9 rounded-lg shrink-0">
+                {% set page_icon_d = "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" %}
+                <svg class="w-9 h-9 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="{{ page_icon_d }}" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-foreground">System Logs</h1>
+                <p class="mt-1 text-sm text-muted-foreground">View and tail service logs.</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <!-- Filter input -->
+            <div class="relative">
+                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input type="text" x-model="filterText" placeholder="Filter lines…"
+                    class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none 
+                        selection:bg-primary selection:text-primary-foreground file:inline-flex 
+                        placeholder:text-muted-foreground 
+                        disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 
+                        md:text-sm dark:bg-input/30 
+                        focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                        aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 w-48" />
+            </div>
+            <!-- Live tail toggle -->
+            <button @click="toggleLive()"
+                :class="liveMode ? 'bg-green-600 border-green-500 text-white' : 'border text-foreground hover:bg-input'"
+                class="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all">
+                <span :class="liveMode ? 'bg-green-300 animate-pulse' : 'bg-slate-600'"
+                    class="w-2 h-2 rounded-full"></span>
+                <span x-text="liveMode ? 'Live' : 'Static'"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Static log view -->
+    <div x-show="!liveMode" class="flex-1 min-h-0 bg-card rounded-xl border flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between px-5 py-3 border-b shrink-0">
+            <h2 class="text-sm font-medium text-foreground">Static View <span class="text-muted-foreground">(last 200 lines)</span></h2>
+            <button @click="htmx.ajax('GET', '/api/logs/' + logType, {target: '#static-log-content', swap: 'innerHTML'})"
+                class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                    focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                    disabled:pointer-events-none disabled:opacity-50 
+                    aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                    border bg-background shadow-xs 
+                    hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                    h-8 gap-1.5 rounded-md px-2">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+                Refresh
+            </button>
+        </div>
+        <div id="static-log" hx-get="/api/logs/system" hx-trigger="load, load-log from:body"
+            hx-target="#static-log-content" hx-swap="innerHTML" class="flex-1 overflow-hidden">
+            <div id="static-log-content"
+                class="h-full overflow-y-auto font-mono text-xs text-muted-foreground p-4 leading-5">
+                <span class="text-muted-foreground">Loading…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live log view -->
+    <div x-show="liveMode"
+        class="flex-1 min-h-0 bg-card rounded-xl border border-green-800/40 flex flex-col shadow-xl shadow-blue-900/20">
+        <div class="flex items-center gap-2 px-5 py-3 border-b border-input shrink-0">
+            <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+            <span class="text-sm font-medium text-green-400">Live tail</span>
+            <span class="text-xs text-muted-foreground ml-1" x-text="logLines.length + ' lines'"></span>
+        </div>
+        <div id="live-log-output"
+            class="flex-1 overflow-y-auto font-mono text-xs text-muted-foreground p-4 leading-5 space-y-0">
+            <template x-for="line in logLines" :key="line.id">
+                <div x-html="formatLine(line.text)" class="whitespace-pre-wrap break-all"></div>
+            </template>
+            <div x-show="logLines.length === 0" class="text-muted-foreground">Waiting for log data…</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

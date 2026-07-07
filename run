@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-only
+#/*
+#* Digital Voice Modem - Management CLI
+#* GPLv2 Open Source. Use is subject to license terms.
+#* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#*
+#*  Copyright (C) 2026 DVMProject Authors
+#*
+#*/
+"""
+DVM Management - Standalone executable wrapper (auto-detect mode)
+Run directly without pip install: ./run
+"""
+import sys
+import os
+from pathlib import Path
+
+# Add the dvm_mgmt package to Python path
+script_dir = Path(__file__).parent.absolute()
+if str(script_dir) not in sys.path:
+    sys.path.insert(0, str(script_dir))
+
+# Import and run main
+from dvm_mgmt.__main__ import main
+
+if __name__ == '__main__':
+    sys.exit(main())

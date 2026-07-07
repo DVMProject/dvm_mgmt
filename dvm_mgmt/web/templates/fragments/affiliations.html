@@ -1,0 +1,43 @@
+<!-- fragments/affiliations.html -->
+{% if affiliations %}
+<div class="overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-left text-xs font-semibold bg-card text-foreground uppercase tracking-wider">
+                <th class="pb-2 pr-4">Peer ID</th>
+                <th class="pb-2 pr-4">Radio ID</th>
+                <th class="pb-2">Talkgroup</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y">
+            {% for peer_affs in affiliations | sort(attribute='peerId') %}
+            {% for aff in peer_affs.affiliations | sort(attribute='srcId') %}
+            <tr class="hover:bg-muted/50 transition-colors">
+                <td class="py-1.5 pr-4 font-mono text-cyan-400 text-xs tabular-nums">{{ peer_affs.peerId }}</td>
+                <td class="py-1.5 pr-4 text-xs">
+                    <span class="font-mono text-slate-300 tabular-nums">{{ aff.srcId }}</span>
+                    {% set rid_label = rid_names.get(aff.srcId | string) or rid_names.get(aff.srcId) %}
+                    {% if rid_label %}
+                    <span class="text-muted-foreground ml-1">{{ rid_label }}</span>
+                    {% endif %}
+                </td>
+                <td class="py-1.5 text-xs">
+                    <span class="font-mono text-green-400 tabular-nums">{{ aff.dstId }}</span>
+                    {% set tg_label = tg_names.get(aff.dstId | string) or tg_names.get(aff.dstId) %}
+                    {% if tg_label %}
+                    <span class="text-muted-foreground ml-1">{{ tg_label }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="w-24 text-xs text-green-400 px-1.5 py-0.5 rounded bg-green-500/20 mt-3 tabular-nums text-center">
+        {% set total = affiliations | sum(attribute='affiliations', start=[]) | list | length %}
+        {{ total }} affiliation{{ 's' if total != 1 }}
+    </p>
+</div>
+{% else %}
+<p class="text-sm text-muted-foreground italic">No active affiliations.</p>
+{% endif %}

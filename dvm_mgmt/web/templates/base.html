@@ -1,0 +1,819 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+{% set app_ver = "R01A00" %}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}DVM{% endblock %} — DVM Management Console</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @custom-variant dark (&:is(.dark *));
+
+        :root {
+            --background: #ffffff;
+            --foreground: #262626;
+            --card: #ffffff;
+            --card-foreground: #262626;
+            --popover: #ffffff;
+            --popover-foreground: #262626;
+            --primary: #f59e0b;
+            --primary-foreground: #000000;
+            --secondary: #f3f4f6;
+            --secondary-foreground: #4b5563;
+            --muted: #f9fafb;
+            --muted-foreground: #6b7280;
+            --accent: #fffbeb;
+            --accent-foreground: #92400e;
+            --destructive: #ef4444;
+            --destructive-foreground: #ffffff;
+            --border: #e5e7eb;
+            --input: #e5e7eb;
+            --ring: #f59e0b;
+            --chart-1: #f59e0b;
+            --chart-2: #d97706;
+            --chart-3: #b45309;
+            --chart-4: #92400e;
+            --chart-5: #78350f;
+            --sidebar: #f9fafb;
+            --sidebar-foreground: #262626;
+            --sidebar-primary: #f59e0b;
+            --sidebar-primary-foreground: #ffffff;
+            --sidebar-accent: #fffbeb;
+            --sidebar-accent-foreground: #92400e;
+            --sidebar-border: #e5e7eb;
+            --sidebar-ring: #f59e0b;
+            --font-sans: Inter, sans-serif;
+            --font-serif: Source Serif 4, serif;
+            --font-mono: JetBrains Mono, monospace;
+            --radius: 0.375rem;
+            --shadow-x: 0px;
+            --shadow-y: 4px;
+            --shadow-blur: 8px;
+            --shadow-spread: -1px;
+            --shadow-opacity: 0.1;
+            --shadow-color: hsl(0 0% 0%);
+            --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
+            --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
+            --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
+            --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
+            --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 2px 4px -2px hsl(0 0% 0% / 0.10);
+            --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 4px 6px -2px hsl(0 0% 0% / 0.10);
+            --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 8px 10px -2px hsl(0 0% 0% / 0.10);
+            --shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
+            --tracking-normal: 0em;
+            --spacing: 0.25rem;
+        }
+
+        .dark {
+            --background: #171717;
+            --foreground: #e5e5e5;
+            --card: #262626;
+            --card-foreground: #e5e5e5;
+            --popover: #262626;
+            --popover-foreground: #e5e5e5;
+            --primary: #f59e0b;
+            --primary-foreground: #000000;
+            --secondary: #262626;
+            --secondary-foreground: #e5e5e5;
+            --muted: #1f1f1f;
+            --muted-foreground: #a3a3a3;
+            --accent: #92400e;
+            --accent-foreground: #fde68a;
+            --destructive: #ef4444;
+            --destructive-foreground: #ffffff;
+            --border: #404040;
+            --input: #404040;
+            --ring: #f59e0b;
+            --chart-1: #fbbf24;
+            --chart-2: #d97706;
+            --chart-3: #92400e;
+            --chart-4: #b45309;
+            --chart-5: #92400e;
+            --sidebar: #0f0f0f;
+            --sidebar-foreground: #e5e5e5;
+            --sidebar-primary: #f59e0b;
+            --sidebar-primary-foreground: #ffffff;
+            --sidebar-accent: #92400e;
+            --sidebar-accent-foreground: #fde68a;
+            --sidebar-border: #404040;
+            --sidebar-ring: #f59e0b;
+            --font-sans: Inter, sans-serif;
+            --font-serif: Source Serif 4, serif;
+            --font-mono: JetBrains Mono, monospace;
+            --radius: 0.375rem;
+            --shadow-x: 0px;
+            --shadow-y: 4px;
+            --shadow-blur: 8px;
+            --shadow-spread: -1px;
+            --shadow-opacity: 0.1;
+            --shadow-color: hsl(0 0% 0%);
+            --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
+            --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
+            --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
+            --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
+            --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 2px 4px -2px hsl(0 0% 0% / 0.10);
+            --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 4px 6px -2px hsl(0 0% 0% / 0.10);
+            --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 8px 10px -2px hsl(0 0% 0% / 0.10);
+            --shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
+        }
+
+        @theme inline {
+            --color-background: var(--background);
+            --color-foreground: var(--foreground);
+            --color-card: var(--card);
+            --color-card-foreground: var(--card-foreground);
+            --color-popover: var(--popover);
+            --color-popover-foreground: var(--popover-foreground);
+            --color-primary: var(--primary);
+            --color-primary-foreground: var(--primary-foreground);
+            --color-secondary: var(--secondary);
+            --color-secondary-foreground: var(--secondary-foreground);
+            --color-muted: var(--muted);
+            --color-muted-foreground: var(--muted-foreground);
+            --color-accent: var(--accent);
+            --color-accent-foreground: var(--accent-foreground);
+            --color-destructive: var(--destructive);
+            --color-destructive-foreground: var(--destructive-foreground);
+            --color-border: var(--border);
+            --color-input: var(--input);
+            --color-ring: var(--ring);
+            --color-chart-1: var(--chart-1);
+            --color-chart-2: var(--chart-2);
+            --color-chart-3: var(--chart-3);
+            --color-chart-4: var(--chart-4);
+            --color-chart-5: var(--chart-5);
+            --color-sidebar: var(--sidebar);
+            --color-sidebar-foreground: var(--sidebar-foreground);
+            --color-sidebar-primary: var(--sidebar-primary);
+            --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+            --color-sidebar-accent: var(--sidebar-accent);
+            --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+            --color-sidebar-border: var(--sidebar-border);
+            --color-sidebar-ring: var(--sidebar-ring);
+
+            --font-sans: var(--font-sans);
+            --font-mono: var(--font-mono);
+            --font-serif: var(--font-serif);
+
+            --radius-sm: calc(var(--radius) - 4px);
+            --radius-md: calc(var(--radius) - 2px);
+            --radius-lg: var(--radius);
+            --radius-xl: calc(var(--radius) + 4px);
+
+            --shadow-2xs: var(--shadow-2xs);
+            --shadow-xs: var(--shadow-xs);
+            --shadow-sm: var(--shadow-sm);
+            --shadow: var(--shadow);
+            --shadow-md: var(--shadow-md);
+            --shadow-lg: var(--shadow-lg);
+            --shadow-xl: var(--shadow-xl);
+            --shadow-2xl: var(--shadow-2xl);
+        }
+
+        @layer base {
+            * {
+                @apply border-border outline-ring/50;
+            }
+            body {
+                @apply bg-background text-foreground;
+            }
+        }
+    </style>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+    <!-- CodeMirror 5 (YAML editor) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css" />
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/material-darker.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/yaml/yaml.min.js"></script>
+
+    <style>
+        /* CodeMirror dark override to blend with UI */
+        .CodeMirror {
+            height: 100%;
+            min-height: 420px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 13px;
+            border-radius: 0.5rem;
+            border: 1px solid rgb(51 65 85);
+        }
+
+        /* HTMX loading indicator */
+        .htmx-indicator {
+            display: none;
+        }
+
+        .htmx-request .htmx-indicator {
+            display: inline-flex;
+        }
+
+        .htmx-request.htmx-indicator {
+            display: inline-flex;
+        }
+
+        /* Smooth log output scroll */
+        #log-output {
+            scroll-behavior: smooth;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgb(31, 31, 31);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgb(64, 64, 64);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgb(71 85 105);
+        }
+
+        .brand-logo {
+            width: 100%;
+            max-width: 144px;
+            height: auto;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* Global table enhancements */
+        .table-sortable th[data-sort-enabled="1"] {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .table-sort-indicator {
+            margin-left: 0.35rem;
+            font-size: 0.7rem;
+            color: rgb(100 116 139);
+            vertical-align: middle;
+        }
+
+        .table-sortable thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+
+<body class="h-full dark bg-background text-foreground antialiased" hx-boost="false" x-data>
+
+<!-- =====================================================================
+       Toast notification system
+     ===================================================================== -->
+    <div id="toast-container" x-data="{
+            toasts: [],
+            add(msg, type) {
+                const id = Date.now() + Math.random();
+                this.toasts.push({ id, message: msg, type });
+                setTimeout(() => this.remove(id), 4500);
+            },
+            remove(id) { this.toasts = this.toasts.filter(t => t.id !== id); }
+        }" @toast.window="add($event.detail.message, $event.detail.type ?? 'success')"
+        class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-show="true" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-x-8 scale-95"
+                x-transition:enter-end="opacity-100 translate-x-0 scale-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-x-0 scale-100"
+                x-transition:leave-end="opacity-0 translate-x-8 scale-95" :class="{
+                    'bg-green-700 border-green-500':      toast.type === 'success',
+                    'bg-red-700 border-red-500':          toast.type === 'error',
+                    'bg-yellow-700 border-yellow-500':    toast.type === 'warning',
+                    'bg-blue-700 border-blue-500':        toast.type === 'info',
+                }" 
+                class="flex items-center gap-3 px-4 py-3 rounded-lg border shadow-xl
+                    text-white text-sm font-medium min-w-[280px] max-w-[400px]
+                    pointer-events-auto cursor-pointer" @click="remove(toast.id)">
+                <!-- Icon -->
+                <span x-show="toast.type === 'success'" class="text-green-200 shrink-0">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                </span>
+                <span x-show="toast.type === 'error'" class="text-red-200 shrink-0">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </span>
+                <span x-show="toast.type === 'warning'" class="text-yellow-200 shrink-0">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
+                    </svg>
+                </span>
+                <span x-show="toast.type === 'info'" class="text-blue-200 shrink-0">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                    </svg>
+                </span>
+                <span x-text="toast.message" class="leading-snug"></span>
+            </div>
+        </template>
+    </div>
+
+    <!-- HTMX → toast bridge -->
+    <script>
+        const ROOT_PATH = (() => {
+            const raw = "{{ root_path | default('', true) }}".trim();
+            if (!raw || raw === "/") return "";
+            return raw.endsWith("/") ? raw.slice(0, -1) : raw;
+        })();
+
+        /**
+         * @brief Rewrites a given URL to include the ROOT_PATH if it's a relative path.
+         * @param url The original URL to rewrite.
+         * @return The rewritten URL with ROOT_PATH prefixed if applicable.
+         */
+        function withRoot(url) {
+            if (!url || typeof url !== 'string') return url;
+            if (!ROOT_PATH) return url;
+            if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) return url;
+            if (url.startsWith('mailto:') || url.startsWith('tel:') || url.startsWith('#')) return url;
+            if (!url.startsWith('/')) return url;
+            if (url === ROOT_PATH || url.startsWith(ROOT_PATH + '/')) return url;
+            return ROOT_PATH + url;
+        }
+
+        /**
+         * @brief Displays a loading indicator inside a specified target element.
+         * @param target A CSS selector string or a DOM element where the loading indicator should be shown.
+         * @param message An optional message to display alongside the loading spinner.
+         */
+        function showPanelLoading(target, message) {
+            const panel = typeof target === 'string' ? document.querySelector(target) : target;
+            if (!panel) return;
+
+            const text = String(message || 'Loading...');
+            panel.innerHTML = `
+                <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    ${text}
+                </div>`;
+        }
+
+        /**
+         * @brief Rewrites all relevant attributes in the given root element (or entire document if root is not provided) 
+         *  to include the ROOT_PATH.
+         * @param root An optional DOM element to scope the attribute rewriting. If not provided, the entire document 
+         *  will be processed.
+         */
+        function rewriteRootedAttributes(root) {
+            const scope = root || document;
+            const attrs = ['href', 'action', 'hx-get', 'hx-post', 'hx-put', 'hx-delete', 'hx-patch'];
+            attrs.forEach((attr) => {
+                scope.querySelectorAll('[' + attr + ']').forEach((el) => {
+                    const current = el.getAttribute(attr);
+                    const updated = withRoot(current);
+                    if (updated !== current) {
+                        el.setAttribute(attr, updated);
+                    }
+                });
+            });
+        }
+
+        document.body.addEventListener('htmx:configRequest', function (evt) {
+            if (evt.detail && typeof evt.detail.path === 'string') {
+                evt.detail.path = withRoot(evt.detail.path);
+            }
+        });
+
+        const _nativeFetch = window.fetch.bind(window);
+        window.fetch = function (input, init) {
+            if (typeof input === 'string') {
+                return _nativeFetch(withRoot(input), init);
+            }
+            if (input instanceof Request) {
+                const updatedUrl = withRoot(input.url);
+                if (updatedUrl !== input.url) {
+                    return _nativeFetch(new Request(updatedUrl, input), init);
+                }
+            }
+            return _nativeFetch(input, init);
+        };
+
+        if (window.EventSource) {
+            const NativeEventSource = window.EventSource;
+            window.EventSource = function (url, config) {
+                return new NativeEventSource(withRoot(url), config);
+            };
+            window.EventSource.prototype = NativeEventSource.prototype;
+        }
+
+        document.addEventListener('htmx:afterRequest', function (evt) {
+            const header = evt.detail.xhr && evt.detail.xhr.getResponseHeader('HX-Trigger');
+            if (!header) return;
+            try {
+                const triggers = JSON.parse(header);
+                if (triggers.showToast) {
+                    window.dispatchEvent(new CustomEvent('toast', { detail: triggers.showToast }));
+                }
+            } catch (_) { }
+        });
+
+        /**
+         * @brief Initializes sortable table functionality for all tables within the specified root element (or entire 
+         *  document if root is not provided).
+         * @param root An optional DOM element to scope the table enhancement. If not provided, the entire document 
+         *  will be processed.
+         */
+        function initTableEnhancements(root) {
+            const scope = root || document;
+            const tables = scope.querySelectorAll('table');
+
+            tables.forEach((table) => {
+                if (table.dataset.uiEnhanced === '1') return;
+                table.dataset.uiEnhanced = '1';
+                table.classList.add('table-sortable');
+
+                const thead = table.tHead;
+                if (!thead || !thead.rows.length) return;
+
+                const tbody = table.tBodies && table.tBodies.length ? table.tBodies[0] : null;
+                if (!tbody) return;
+
+                const headerCells = Array.from(thead.rows[thead.rows.length - 1].cells);
+
+                const getCellValue = (row, colIdx) => {
+                    const cell = row.cells[colIdx];
+                    if (!cell) return '';
+                    const explicit = cell.getAttribute('data-sort-value');
+                    if (explicit !== null) return explicit.trim();
+                    return (cell.textContent || '').trim().replace(/\s+/g, ' ');
+                };
+
+                const asNumber = (value) => {
+                    const compact = String(value).replace(/,/g, '').trim();
+                    if (!compact) return null;
+                    const n = Number(compact);
+                    return Number.isFinite(n) ? n : null;
+                };
+
+                const clearIndicators = () => {
+                    headerCells.forEach((cell) => {
+                        cell.removeAttribute('data-sort-dir');
+                        const indicator = cell.querySelector('.table-sort-indicator');
+                        if (indicator) indicator.remove();
+                    });
+                };
+
+                const applyIndicator = (th, asc) => {
+                    const marker = document.createElement('span');
+                    marker.className = 'table-sort-indicator';
+                    marker.textContent = asc ? '▲' : '▼';
+                    th.appendChild(marker);
+                };
+
+                headerCells.forEach((th, colIdx) => {
+                    const title = (th.textContent || '').trim().toLowerCase();
+                    if (!title || title === 'actions') return;
+
+                    th.dataset.sortEnabled = '1';
+                    th.addEventListener('click', () => {
+                        const current = th.getAttribute('data-sort-dir');
+                        const asc = current !== 'asc';
+
+                        const rows = Array.from(tbody.querySelectorAll('tr'));
+                        rows.sort((a, b) => {
+                            const av = getCellValue(a, colIdx);
+                            const bv = getCellValue(b, colIdx);
+                            const an = asNumber(av);
+                            const bn = asNumber(bv);
+
+                            let cmp;
+                            if (an !== null && bn !== null) {
+                                cmp = an - bn;
+                            } else {
+                                cmp = av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' });
+                            }
+                            return asc ? cmp : -cmp;
+                        });
+
+                        rows.forEach((row) => tbody.appendChild(row));
+
+                        clearIndicators();
+                        th.setAttribute('data-sort-dir', asc ? 'asc' : 'desc');
+                        applyIndicator(th, asc);
+                    });
+                });
+            });
+        }
+
+        /**
+         * @brief Applies a filter to the rows of a target table based on the value of an input element.
+         * @param input The input element whose value is used to filter the table rows. The input must have a
+         *  'data-table-filter-target' attribute that specifies a CSS selector for the target table.
+         */
+        function applyTableFilter(input) {
+            if (!input) return;
+
+            const targetSelector = input.getAttribute('data-table-filter-target');
+            if (!targetSelector) return;
+
+            const target = document.querySelector(targetSelector);
+            if (!target) return;
+
+            const query = (input.value || '').trim().toLowerCase();
+            const rows = target.querySelectorAll('tbody tr');
+
+            rows.forEach((row) => {
+                const haystack = (row.textContent || '').toLowerCase().replace(/\s+/g, ' ');
+                row.style.display = !query || haystack.includes(query) ? '' : 'none';
+            });
+        }
+
+        /**
+         * @brief Initializes table filter functionality for all input elements with the 'data-table-filter-target' attribute
+         *  within the specified root element (or entire document if root is not provided).
+         * @param root An optional DOM element to scope the filter initialization. If not provided, the entire document 
+         *  will be processed.
+         */
+        function initTableFilters(root) {
+            const scope = root || document;
+            const inputs = scope.querySelectorAll('input[data-table-filter-target]');
+
+            inputs.forEach((input) => {
+                if (input.dataset.filterBound !== '1') {
+                    input.dataset.filterBound = '1';
+                    input.addEventListener('input', () => applyTableFilter(input));
+                }
+
+                applyTableFilter(input);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            rewriteRootedAttributes(document);
+            initTableEnhancements(document);
+            initTableFilters(document);
+        });
+
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
+            const target = (evt.detail && evt.detail.target) ? evt.detail.target : (evt.target || document);
+            rewriteRootedAttributes(target);
+            initTableEnhancements(target);
+            initTableFilters(document);
+        });
+    </script>
+
+<!-- =====================================================================
+       Layout shell: fixed sidebar + scrollable main
+     ===================================================================== -->
+    <div class="flex bg-sidebar h-full">
+
+        <!-- ----- Sidebar ----- -->
+        <aside class="fixed inset-y-0 left-0 z-40 flex flex-col w-64 select-none bg-sidebar text-sidebar-foreground">
+            <!-- Logo / Brand -->
+            <div class="px-5 py-5 space-y-3">
+                <img src="{{ (root_path or '') ~ '/static/img/project.png' }}" alt="DVMProject" class="brand-logo"
+                    style="max-width: 215px;" />
+                <div class="min-w-0">
+                    <p class="text-xs text-muted-foreground truncate">{{ hostname }}</p>
+                    <p class="text-[11px] text-muted-foreground truncate">
+                        System Prefix: {{ system_prefix | default('N/A', true) }}
+                    </p>
+
+                    {% if selected_target %}
+                    <p class="rounded mt-2 border px-2 py-1 text-[11px] text-cyan-300">
+                        {{ selected_target.name }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Main Navigation -->
+            <nav class="min-h-0 flex flex-col px-3 py-4 border-b">
+                {% set nav = [
+                    ("dashboard", "/", "M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"),
+                    ("system-watch", "/system-watch", "M4.5 4.5h5.25v5.25H4.5V4.5zm9.75 0h5.25v5.25h-5.25V4.5zM4.5 14.25h5.25v5.25H4.5v-5.25zm9.75 0h5.25v5.25h-5.25v-5.25z"),
+                    ("connected-peers", "/connected-peers", "M3 9V15C3 17.8284 3 19.2426 3.87868 20.1213C4.75736 21 6.17157 21 9 21H15C17.8284 21 19.2426 21 20.1213 20.1213C21 19.2426 21 17.8284 21 15V9C21 6.17157 21 4.75736 20.1213 3.87868C19.2426 3 17.8284 3 15 3H9 M15 15V16H16V15H15ZM7.70711 6.29289C7.31658 5.90237 6.68342 5.90237 6.29289 6.29289C5.90237 6.68342 5.90237 7.31658 6.29289 7.70711L7.70711 6.29289ZM14 8V15H16V8H14ZM15 14H8V16H15V14ZM15.7071 14.2929L7.70711 6.29289L6.29289 7.70711L14.2929 15.7071L15.7071 14.2929Z"),
+                    ("edit-peers", "/edit-peers", "M3 9V15C3 17.8284 3 19.2426 3.87868 20.1213C4.75736 21 6.17157 21 9 21H15C17.8284 21 19.2426 21 20.1213 20.1213C21 19.2426 21 17.8284 21 15V9C21 6.17157 21 4.75736 20.1213 3.87868C19.2426 3 17.8284 3 15 3H9 M15 15V16H16V15H15ZM7.70711 6.29289C7.31658 5.90237 6.68342 5.90237 6.29289 6.29289C5.90237 6.68342 5.90237 7.31658 6.29289 7.70711L7.70711 6.29289ZM14 8V15H16V8H14ZM15 14H8V16H15V14ZM15.7071 14.2929L7.70711 6.29289L6.29289 7.70711L14.2929 15.7071L15.7071 14.2929Z"),
+                    ("talkgroups", "/talkgroups", "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"),
+                    ("radio-ids", "/radio-ids", "M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"),
+                    ("radio", "/radio", "M3.75 7.5l16.5-4.125M12 6.75c-2.708 0-5.363.224-7.948.655C2.956 7.58 2.25 8.507 2.25 9.574v9.176A2.25 2.25 0 004.5 21h15a2.25 2.25 0 002.25-2.25V9.574c0-1.067-.706-1.994-1.802-2.169A48.329 48.329 0 0012 6.75zm-1.683 6.443l-.007.005-.052.036a.53.53 0 00-.082.06.614.614 0 00-.171.403v.207a.612.612 0 00.377.566l.13.054.015.007 2.116.873a2.107 2.107 0 01-.189.422.75.75 0 00.272 1.027.75.75 0 001.028-.273 3.6 3.6 0 00.315-.702l1.416.585a.612.612 0 00.832-.573v-.573a.612.612 0 00-.361-.559l-.014-.007-.13-.06-3.495-1.44a.512.512 0 00-.2-.04.516.516 0 00-.2.04z"),
+                    ("services", "/services", "M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z"),
+                    ("logs", "/logs", "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z")
+                ] %}
+                {% set console_icon_d = "M8.25 6.75h7.5M8.25 10.5h7.5M8.25 14.25h4.5m-7.875 6h14.25A2.625 2.625 0 0021.75 17.625V6.375A2.625 2.625 0 0019.125 3.75H4.875A2.625 2.625 0 002.25 6.375v11.25A2.625 2.625 0 004.875 20.25z" %}
+                <div class="overflow-y-auto space-y-0.5">
+                    <ul class="flex w-full min-w-0 flex-col gap-1">
+                        {% for name, href, icon_d in nav %}
+                        {% if not (name == 'system-watch' and not config.system_watch_enabled) %}
+                        <li class="group/menu-item relative">
+                            <a href="{{ href }}" 
+                                class="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-hidden ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 
+                                    disabled:pointer-events-none disabled:opacity-50 
+                                    group-has-data-[sidebar=menu-action]/menu-item:pr-8 
+                                    aria-disabled:pointer-events-none aria-disabled:opacity-50 
+                                    text-muted-foreground h-8 text-sm hover:shadow-2xl
+                                    {% if page == name or (page == 'peers' and name in ('connected-peers', 'edit-peers')) %}
+                                        bg-primary text-primary-foreground shadow-2xl
+                                    {% else %}
+                                        hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
+                                    {% endif %}">
+                                <svg class="w-5 h-5 shrink-0 {% if page == name or (page == 'peers' and name in ('connected-peers', 'edit-peers')) %}text-primary-foreground{% endif %}"
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_d }}" />
+                                </svg>
+                                <span class="
+                                    {% if page == name or (page == 'peers' and name in ('connected-peers', 'edit-peers')) %}
+                                        text-primary-foreground
+                                    {% endif %}">
+                                    {% if name == 'profiles' %}BeOn Profiles
+                                    {% elif name == 'system-watch' %}System Watch
+                                    {% elif name == 'connected-peers' %}Connected Peers
+                                    {% elif name == 'talkgroups' %}Configured Talkgroups
+                                    {% elif name == 'radio-ids' %}Configured Radio IDs
+                                    {% elif name == 'edit-peers' %}Edit Peers
+                                    {% elif name == 'radio' %}Radio ID Commands
+                                    {% elif name == 'services' %}Service Management
+                                    {% elif name == 'logs' %}System Logs
+                                    {% else %}
+                                        {{ name | capitalize }}
+                                    {% endif %}
+                                </span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Secondary Navigation -->
+            <div class="flex-1 min-h-0 flex flex-col px-3 py-4">
+                <ul class="flex w-full min-w-0 flex-col gap-1">
+                    <li class="group/menu-item relative">
+                        <a href="/console" 
+                            class="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-hidden ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 
+                                disabled:pointer-events-none disabled:opacity-50 
+                                group-has-data-[sidebar=menu-action]/menu-item:pr-8 
+                                aria-disabled:pointer-events-none aria-disabled:opacity-50 
+                                h-8 text-sm text-muted-foreground
+                                {% if page == 'console' %}
+                                    bg-primary text-primary-foreground
+                                {% else %}
+                                    hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
+                                {% endif %}">
+                            <svg class="w-5 h-5 shrink-0 {% if page == 'console' %}text-primary-foreground{% endif %}"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="{{ console_icon_d }}" />
+                            </svg>
+                            <span class="
+                                {% if page == name or (page == 'peers' and name in ('connected-peers', 'edit-peers')) %}
+                                    text-primary-foreground
+                                {% endif %}">Console</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-5 py-4">
+                <p class="text-xs text-muted-foreground leading-relaxed">
+                    DVM <i>Management Console</i> {{ app_ver }}<br />
+                    <span class="text-[0.6rem]">Copyright &copy; 2026 DVMProject Authors</span>
+                </p>
+            </div>
+        </aside>
+
+        <!-- ----- Main content area ----- -->
+        <div class="flex flex-col flex-1 min-w-0 ml-64 bg-background backdrop-blur border rounded-2xl shadow-sm 
+            m-2 transition-[margin] duration-200 ease-linear">
+            <!-- Top bar -->
+            <header class="sticky top-0 z-30 flex items-center justify-between px-6 py-3 backdrop-blur border-l border-transparent rounded-2xl">
+                <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                    <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        stroke-width="1.7">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                    </svg>
+                    <a href="/" class="text-muted-foreground hover:text-foreground transition-colors">Dashboard</a>
+                    {% if page != 'dashboard' %}
+                    <span class="text-muted-foreground border-r border-muted-foreground">&nbsp;</span>
+                    <span class="text-muted-foreground font-medium capitalize">{% block breadcrumb %}
+                        {% if page == 'system-watch' %}System Watch
+                        {% elif page == 'connected-peers' %}Connected Peers
+                        {% elif page == 'talkgroups' %}Configured Talkgroups
+                        {% elif page == 'radio-ids' %}Configured Radio IDs
+                        {% elif page == 'edit-peers' %}Edit Peers
+                        {% elif page == 'radio' %}Radio ID Commands
+                        {% elif page == 'services' %}Service Management
+                        {% elif page == 'logs' %}System Logs
+                        {% else %}
+                            {{ page }}
+                        {% endif %}
+                        {% endblock %}</span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-4">
+                    <div x-data="{
+                            now: '',
+                            tick() {
+                                this.now = new Date().toLocaleTimeString('en-US', { hour12: false });
+                            }
+                        }" x-init="tick(); setInterval(() => tick(), 1000);"
+                        class="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span x-text="now"></span>
+                    </div>
+                    {% if federation_configured %}
+                    <div class="flex items-center gap-2">
+                        <form action="/api/federation/select" method="post" class="flex items-center">
+                            <label for="federation-target" class="sr-only">Federation target</label>
+                            <input type="hidden" name="next" value="{{ request.url.path }}" />
+                            <select id="federation-target" name="target_id" onchange="this.form.submit()" 
+                                class="flex items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1 text-sm whitespace-nowrap shadow-xs 
+                                    transition-[color,box-shadow] outline-none 
+                                    focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                                    disabled:cursor-not-allowed disabled:opacity-50 
+                                    aria-invalid:border-destructive aria-invalid:ring-destructive/20 
+                                    dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:ring-destructive/40 w-full h-8">
+                                {% for target in federation_targets %}
+                                <option class="bg-background text-foreground" value="{{ target.target_id }}" {% if
+                                    selected_target and selected_target.target_id==target.target_id %}selected{% endif
+                                    %} {% if not target.enabled and not target.is_local %}disabled{% endif %}>
+                                    {{ target.name }}
+                                    {% if not target.enabled and not target.is_local %} (disabled){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                        {% if not federation_enabled %}
+                        <span class="text-[11px] text-amber-400"
+                            title="Federation is configured, but the shared secret is missing or empty.">
+                            not ready
+                        </span>
+                        {% elif federation_targets|length <= 1 %} <span class="text-[11px] text-slate-500"
+                            title="No remote federation nodes are configured yet.">
+                            local only
+                            </span>
+                            {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if auth_user %}
+                    <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div
+                            class="flex rounded rounded-md border h-8 gap-1.5 px-2 items-center justify-center whitespace-nowrap bg-background shadow-xs">
+                            <span>{{ auth_user }}</span>
+                        </div>
+                        <form action="/logout" method="post">
+                            <button type="submit" class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                                focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                                disabled:pointer-events-none disabled:opacity-50 
+                                aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                                border bg-background shadow-xs 
+                                hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                                h-8 gap-1.5 rounded-md px-2">Logout</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </header>
+
+            <!-- Page body -->
+            <main class="flex-1 overflow-y-auto p-6">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

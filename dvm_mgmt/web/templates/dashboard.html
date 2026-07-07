@@ -1,0 +1,129 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-5 py-4">
+        <div class="flex items-center justify-center w-9 h-9 rounded-lg shrink-0">
+            {% set page_icon_d = "M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" %}
+            <svg class="w-9 h-9 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="{{ page_icon_d }}" />
+            </svg>
+        </div>
+        <div>
+            <h1 class="text-xl font-bold text-forground">System Dashboard</h1>
+            <p class="mt-1 text-sm text-muted-foreground">Live system status, FNE statistics, and active affiliations.</p>
+        </div>
+    </div>
+
+    <!-- Top row: Status + Affiliations -->
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+        <!-- Service Status card -->
+        <div class="text-card-foreground flex flex-col">
+            <div class="flex items-center justify-between px-5 py-3.5">
+                <h2 class="text-sm font-semibold text-slate-200">System Status <span
+                        class="text-xs text-muted-foreground">(15s refresh)</span></h2>
+                <div class="flex items-center gap-3">
+                    <span class="htmx-indicator flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Updating…
+                    </span>
+                    <span id="status-last-update" class="text-xs text-muted-foreground tabular-nums"></span>
+                </div>
+            </div>
+            <div id="status-panel" class="p-5 flex-1" hx-get="/api/status" hx-trigger="load, every 15s"
+                hx-target="#status-panel" hx-swap="innerHTML" hx-indicator=".htmx-indicator">
+                <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Loading status…
+                </div>
+            </div>
+        </div>
+
+        <!-- Affiliations card -->
+        <div class="bg-card rounded-xl border text-card-foreground flex flex-col shadow-2xl">
+            <div class="flex items-center justify-between px-5 py-3.5">
+                <h2 class="text-sm font-semibold text-slate-200">Active Affiliations <span
+                        class="text-xs text-muted-foreground">(30s refresh)</span></h2>
+                <div class="flex items-center gap-3">
+                    <span id="aff-last-update" class="text-xs text-muted-foreground tabular-nums"></span>
+                </div>
+            </div>
+            <div id="affiliations-panel" class="p-5 flex-1 overflow-x-auto" hx-get="/api/affiliations"
+                hx-trigger="load, every 30s" hx-target="#affiliations-panel" hx-swap="innerHTML">
+                <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Loading affiliations…
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Quick action tiles -->
+    <div>
+        <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Actions</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+            {% set actions = [
+                ("Reload TGs", "post", "/api/services/reload-talkgroups/system", "text-cyan-400", "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"),
+                ("Reload RIDs", "post", "/api/services/reload-rids", "text-green-400", "M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"),
+                ("Reload Peers", "post", "/api/services/reload-peerlist", "text-cyan-400", "M3 9V15C3 17.8284 3 19.2426 3.87868 20.1213C4.75736 21 6.17157 21 9 21H15C17.8284 21 19.2426 21 20.1213 20.1213C21 19.2426 21 17.8284 21 15V9C21 6.17157 21 4.75736 20.1213 3.87868C19.2426 3 17.8284 3 15 3H9 M15 15V16H16V15H15ZM7.70711 6.29289C7.31658 5.90237 6.68342 5.90237 6.29289 6.29289C5.90237 6.68342 5.90237 7.31658 6.29289 7.70711L7.70711 6.29289ZM14 8V15H16V8H14ZM15 14H8V16H15V14ZM15.7071 14.2929L7.70711 6.29289L6.29289 7.70711L14.2929 15.7071L15.7071 14.2929Z"),
+                ("Reload Crypto", "post", "/api/services/reload-crypto", "text-purple-400", "M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"),
+                ("Force Update", "post", "/api/services/force-update", "text-yellow-400", "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"),
+            ] %}
+
+            {% for label, method, url, color, icon_d in actions %}
+            <button hx-{{ method }}="{{ url }}" hx-swap="none" 
+                class="flex flex-col inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                    focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                    disabled:pointer-events-none disabled:opacity-50 
+                    aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                    border shadow-xs 
+                    hover:bg-accent/50 hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-accent/50 
+                    p-4 gap-2 rounded-md px-2">
+                <svg class="w-6 h-6 {{ color }} group-hover:scale-110 transition-transform" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_d }}" />
+                </svg>
+                <span class="text-sm font-medium text-muted-foreground">{{ label }}</span>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.getElementById('status-panel').addEventListener('htmx:afterSettle', function () {
+        var el = document.getElementById('status-last-update');
+        if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', { hour12: false });
+    });
+    document.getElementById('affiliations-panel').addEventListener('htmx:afterSettle', function () {
+        var el = document.getElementById('aff-last-update');
+        if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', { hour12: false });
+    });
+</script>
+{% endblock %}

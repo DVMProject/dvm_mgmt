@@ -1,0 +1,150 @@
+<!-- fragments/talkgroup_list.html -->
+{% if error %}
+<p class="text-sm text-red-400 px-1">{{ error }}</p>
+{% elif entries %}
+<div>
+    {% if loaded_error %}
+    <p class="text-xs text-amber-400 px-3 pb-3">FNE loaded-talkgroup status unavailable: {{ loaded_error }}</p>
+    <div class="hidden" hx-get="/api/talkgroups/{{ system }}" hx-trigger="load delay:3s once" hx-target="#tg-list-panel"
+        hx-swap="innerHTML"></div>
+    {% endif %}
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-left text-xs font-semibold text-foreground uppercase tracking-wider border-b">
+                <th class="bg-card pt-2 pb-2 px-3">TGID</th>
+                <th class="bg-card pt-2 pb-2 px-3">Slot</th>
+                <th class="bg-card pt-2 pb-2 px-3">Name</th>
+                <th class="bg-card pt-2 pb-2 px-3">Alias</th>
+                <th class="bg-card pt-2 pb-2 px-3 text-center">Loaded On FNE</th>
+                <th class="bg-card pt-2 pb-2 px-3 text-center">Active</th>
+                <th class="bg-card pt-2 pb-2 px-3 text-center">Affiliated</th>
+                <th class="bg-card pt-2 pb-2 px-3 text-center">Enc. Strapping</th>
+                <th class="bg-card pt-2 pb-2 px-3 text-center">Parrot</th>
+                <th class="bg-card pt-2 pb-2 px-3 text-center">Lists</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y">
+            {% for entry in entries | sort(attribute='tgid') %}
+            <tr class="hover:bg-muted/40 transition-colors">
+                <td class="py-2 px-3 font-mono text-cyan-400 text-xs tabular-nums">{{ entry.tgid }}</td>
+                <td class="py-2 px-3 font-mono text-muted-foreground text-xs tabular-nums">{{ entry.slot }}</td>
+                <td class="py-2 px-3 text-foreground text-xs">{{ entry.name }}</td>
+                <td class="py-2 px-3 text-muted-foreground text-xs">{{ entry.alias }}</td>
+                <td class="py-2 px-3 text-center text-xs">
+                    {% if not entry.loaded_status_known %}
+                    <span class="text-red-500">Unavailable</span>
+                    {% elif entry.loaded_active %}
+                    <span class="text-green-400">✓</span>
+                    {% elif entry.loaded_invalid %}
+                    <span class="text-red-400">Invalid</span>
+                    {% elif entry.loaded %}
+                    <span class="text-amber-400">Inactive</span>
+                    {% else %}
+                    <span class="text-red-400">✗</span>
+                    {% endif %}
+                </td>
+                <td class="py-2 px-3 text-center text-xs">
+                    {% if entry.active %}<span class="text-green-400">✓</span>{% else %}<span
+                        class="text-red-400">✗</span>{% endif %}
+                </td>
+                <td class="py-2 px-3 text-center text-xs">
+                    {% if entry.affiliated %}<span class="text-yellow-400">✓</span>{% else %}<span
+                        class="text-muted-foreground">—</span>{% endif %}
+                </td>
+                <td class="py-2 px-3 text-center text-xs">
+                    {% if entry.strapping == 0 or entry.strapping == 2 %}
+                        <span class="text-green-400">Select / Clear</span>
+                    {% elif entry.strapping == 1 %}
+                        <span class="text-red-400">Secure</span>
+                    {% else %}
+                        <span class="text-muted-foreground">—</span>
+                    {% endif %}
+                </td>
+                <td class="py-2 px-3 text-center text-xs">
+                    {% if entry.parrot %}<span class="text-purple-400">✓</span>{% else %}<span
+                        class="text-muted-foreground">—</span>{% endif %}
+                </td>
+                <td class="py-2 px-3 text-center text-xs">
+                    <button type="button"
+                        class="inline-flex shrink-0 items-center justify-center text-xs font-medium whitespace-nowrap transition-all outline-none border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-7 gap-1.5 rounded-md px-2"
+                        onclick="document.getElementById('tg-lists-{{ system }}-{{ loop.index0 }}').classList.remove('hidden'); document.body.classList.add('overflow-hidden');">
+                        View
+                    </button>
+                    <div id="tg-lists-{{ system }}-{{ loop.index0 }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                        <div class="rounded-xl border bg-card text-foreground text-left p-0 w-full max-w-2xl shadow-2xl max-h-[85vh] overflow-hidden" onclick="event.stopPropagation()" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+                        <div class="px-4 py-3 border-b flex items-center justify-between">
+                            <h3 class="text-sm font-semibold">TG {{ entry.tgid }} (Slot {{ entry.slot }}) List Configuration</h3>
+                            <button onclick="document.getElementById('tg-lists-{{ system }}-{{ loop.index0 }}').classList.add('hidden'); document.body.classList.remove('overflow-hidden');"
+                                class="text-muted-foreground hover:text-foreground transition-colors ml-1">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="p-4 text-xs overflow-y-auto max-h-[calc(85vh-56px)] overscroll-contain" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div class="rounded-md border border-input bg-background/40 p-3 md:col-span-1">
+                                <p class="font-semibold text-foreground">Included Peer IDs</p>
+                                {% if entry.inclusion %}
+                                <ul class="mt-2 space-y-1 max-h-28 overflow-y-auto overscroll-contain rounded border border-input/70 bg-background/60 p-2 font-mono text-muted-foreground text-left" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+                                    {% for peer_id in entry.inclusion %}
+                                    <li class="px-1 py-0.5 rounded hover:bg-muted/40 text-left">{{ peer_id }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p class="mt-1 text-muted-foreground italic">None</p>
+                                {% endif %}
+                            </div>
+                            <div class="rounded-md border border-input bg-background/40 p-3 md:col-span-1">
+                                <p class="font-semibold text-foreground">Excluded Peer IDs</p>
+                                {% if entry.exclusion %}
+                                <ul class="mt-2 space-y-1 max-h-28 overflow-y-auto overscroll-contain rounded border border-input/70 bg-background/60 p-2 font-mono text-muted-foreground text-left" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+                                    {% for peer_id in entry.exclusion %}
+                                    <li class="px-1 py-0.5 rounded hover:bg-muted/40 text-left">{{ peer_id }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p class="mt-1 text-muted-foreground italic">None</p>
+                                {% endif %}
+                            </div>
+                            <div class="rounded-md border border-input bg-background/40 p-3 md:col-span-1">
+                                <p class="font-semibold text-foreground">Always Peer IDs</p>
+                                {% if entry.always %}
+                                <ul class="mt-2 space-y-1 max-h-28 overflow-y-auto overscroll-contain rounded border border-input/70 bg-background/60 p-2 font-mono text-muted-foreground text-left" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+                                    {% for peer_id in entry.always %}
+                                    <li class="px-1 py-0.5 rounded hover:bg-muted/40 text-left">{{ peer_id }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p class="mt-1 text-muted-foreground italic">None</p>
+                                {% endif %}
+                            </div>
+                            <div class="hidden md:block md:col-span-1"></div>
+                            <div class="rounded-md border border-input bg-background/40 p-3 md:col-span-2">
+                                <p class="font-semibold text-foreground">Allowed RIDs</p>
+                                {% if entry.rid_permitted %}
+                                <ul class="mt-2 space-y-1 max-h-28 overflow-y-auto overscroll-contain rounded border border-input/70 bg-background/60 p-2 font-mono text-muted-foreground text-left" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+                                    {% for rid in entry.rid_permitted %}
+                                    <li class="px-1 py-0.5 rounded hover:bg-muted/40 text-left">{{ rid }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p class="mt-1 text-muted-foreground italic">None</p>
+                                {% endif %}
+                            </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="px-4 py-2.5 text-xs text-muted-foreground text-right">
+        {{ entries | length }} talkgroup{{ 's' if entries | length != 1 }}
+    </p>
+</div>
+{% else %}
+<p class="text-sm text-muted-foreground italic px-1">No talkgroups found in file.</p>
+{% endif %}

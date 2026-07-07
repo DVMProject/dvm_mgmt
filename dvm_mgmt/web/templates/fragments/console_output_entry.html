@@ -1,0 +1,12 @@
+<!-- fragments/console_output_entry.html -->
+<div class="rounded-lg border bg-card/60 overflow-hidden">
+    <div class="px-3 py-2 border-b flex items-center justify-between gap-3 text-xs">
+        <div class="text-foreground font-mono">$ {{ command }}</div>
+        <div class="flex items-center gap-3">
+            <span class="text-muted-foreground">{{ timestamp }}</span>
+            <span class="font-mono {% if exit_code == 0 %}text-emerald-300{% else %}text-red-300{% endif %}">exit {{
+                exit_code }}</span>
+        </div>
+    </div>
+    <pre class="px-3 py-3 text-xs text-foreground whitespace-pre-wrap break-all font-mono">{{ output }}</pre>
+</div>
