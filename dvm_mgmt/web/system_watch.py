@@ -268,7 +268,9 @@ class SystemWatchBridge:
                         if not isinstance(message, dict):
                             continue
 
-                        if message.get("type") == "peer_status":
+                        message_type = str(message.get("type") or "")
+
+                        if message_type == "peer_status":
                             peer_id = int(message.get("peerId") or 0)
                             payload = message.get("payload")
                             if not isinstance(payload, dict):

@@ -91,6 +91,79 @@ SPDX-License-Identifier: GPL-2.0-only
             </div>
         </div>
     </div>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+        <div class="rounded-2xl border bg-card shadow-2xl overflow-hidden">
+            <div class="border-b px-5 py-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-sm font-semibold text-foreground">Call Events</h2>
+                        <p class="mt-1 text-xs text-muted-foreground">Live trace of SysView call start/end events.</p>
+                    </div>
+                    <span id="system-watch-call-events-count" class="rounded-full border bg-card text-muted-foreground px-3 py-1.5 text-xs">0 lines</span>
+                </div>
+                <div class="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center">
+                    <button id="system-watch-call-events-pause" type="button"
+                        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                            focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                            disabled:pointer-events-none disabled:opacity-50 
+                            aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                            border bg-background shadow-xs 
+                            hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                            h-8 gap-1.5 rounded-md px-2">Pause</button>
+                    <div class="min-w-0 flex-1">
+                        <label for="system-watch-call-events-src-filter" class="sr-only">Filter source ID</label>
+                        <input id="system-watch-call-events-src-filter" type="text" inputmode="numeric" placeholder="Filter source ID"
+                            class="h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none 
+                                placeholder:text-muted-foreground dark:bg-input/30 
+                                focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <label for="system-watch-call-events-dst-filter" class="sr-only">Filter destination ID</label>
+                        <input id="system-watch-call-events-dst-filter" type="text" inputmode="numeric" placeholder="Filter destination ID"
+                            class="h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none 
+                                placeholder:text-muted-foreground dark:bg-input/30 
+                                focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" />
+                    </div>
+                </div>
+            </div>
+            <div id="system-watch-call-events-trace" class="max-h-56 overflow-y-auto bg-slate-950/60 font-mono text-xs leading-5 text-slate-200">
+                <div class="px-4 py-3 text-slate-400">Waiting for call events...</div>
+            </div>
+        </div>
+
+        <div class="rounded-2xl border bg-card shadow-2xl overflow-hidden">
+            <div class="border-b px-5 py-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-sm font-semibold text-foreground">Control Data Events</h2>
+                        <p class="mt-1 text-xs text-muted-foreground">Live trace of CSBK / TSBK / RCCH net events.</p>
+                    </div>
+                    <span id="system-watch-control-events-count" class="rounded-full border bg-card text-muted-foreground px-3 py-1.5 text-xs">0 lines</span>
+                </div>
+                <div class="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center">
+                    <button id="system-watch-control-events-pause" type="button"
+                        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 
+                            focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 
+                            disabled:pointer-events-none disabled:opacity-50 
+                            aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 
+                            border bg-background shadow-xs 
+                            hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 
+                            h-8 gap-1.5 rounded-md px-2">Pause</button>
+                    <div class="min-w-0 flex-1">
+                        <label for="system-watch-control-events-opcode-filter" class="sr-only">Filter opcode</label>
+                        <input id="system-watch-control-events-opcode-filter" type="text" placeholder="Filter opcode (hex or dec)"
+                            class="h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none 
+                                placeholder:text-muted-foreground dark:bg-input/30 
+                                focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" />
+                    </div>
+                </div>
+            </div>
+            <div id="system-watch-control-events-trace" class="max-h-56 overflow-x-auto overflow-y-auto bg-slate-950/60 font-mono text-xs leading-5 text-slate-200">
+                <div class="px-4 py-3 text-slate-400">Waiting for control data events...</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -99,11 +172,20 @@ SPDX-License-Identifier: GPL-2.0-only
         const connection = document.getElementById('system-watch-connection');
         const count = document.getElementById('system-watch-count');
         const last = document.getElementById('system-watch-last');
+        const callEventsTrace = document.getElementById('system-watch-call-events-trace');
+        const callEventsCount = document.getElementById('system-watch-call-events-count');
+        const controlEventsTrace = document.getElementById('system-watch-control-events-trace');
+        const controlEventsCount = document.getElementById('system-watch-control-events-count');
+        const controlEventsPauseButton = document.getElementById('system-watch-control-events-pause');
+        const controlEventsOpcodeFilterInput = document.getElementById('system-watch-control-events-opcode-filter');
+        const callEventsPauseButton = document.getElementById('system-watch-call-events-pause');
+        const callEventsSrcFilterInput = document.getElementById('system-watch-call-events-src-filter');
+        const callEventsDstFilterInput = document.getElementById('system-watch-call-events-dst-filter');
         const filterInput = document.getElementById('system-watch-filter');
         const groupedOnlyInput = document.getElementById('system-watch-grouped-only');
         const collapseAllButton = document.getElementById('system-watch-collapse-all');
         const expandAllButton = document.getElementById('system-watch-expand-all');
-        if (!grid || !connection || !count || !last || !filterInput || !groupedOnlyInput || !collapseAllButton || !expandAllButton) {
+        if (!grid || !connection || !count || !last || !callEventsTrace || !callEventsCount || !controlEventsTrace || !controlEventsCount || !controlEventsPauseButton || !controlEventsOpcodeFilterInput || !callEventsPauseButton || !callEventsSrcFilterInput || !callEventsDstFilterInput || !filterInput || !groupedOnlyInput || !collapseAllButton || !expandAllButton) {
             return;
         }
 
@@ -128,11 +210,20 @@ SPDX-License-Identifier: GPL-2.0-only
         const renderMinIntervalMs = 120;
         const tileRefreshIntervalMs = 500;
         const groupRefreshIntervalMs = 2000;
+        const callEventsTraceLimit = 50;
+        const controlEventsTraceLimit = 50;
         const tileCardBaseClass = 'js-tile-card flex h-full flex-col rounded-2xl border bg-slate-950/60 p-4 shadow-lg transition-colors';
         const tileHeadingBaseClass = 'js-tile-heading mt-1 truncate text-base font-semibold';
         const tileBadgeBaseClass = 'js-tile-badge shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]';
         const tileToneBaseClass = 'js-tile-tone mt-1 font-semibold';
         const tileStatusTagClass = 'js-status-tag rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-400';
+        const callEventLines = [];
+        const controlEventLines = [];
+        let callEventsPaused = false;
+        let callEventsSrcFilter = '';
+        let callEventsDstFilter = '';
+        let controlEventsPaused = false;
+        let controlEventsOpcodeFilter = '';
         let lastRenderAt = 0;
         let renderScheduled = false;
         let renderDirty = false;
@@ -234,6 +325,358 @@ SPDX-License-Identifier: GPL-2.0-only
         }
 
         /**
+         * @brief Build a timestamp string for call event trace output.
+         * @param {number} nowMillis - Milliseconds since epoch.
+         * @return {string} - Time in HH:MM:SS format.
+         */
+        function traceTime(nowMillis) {
+            const date = new Date(nowMillis);
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
+        }
+
+        /**
+         * @brief Normalize any ID value into a canonical integer string.
+         * @param {any} value - The value to normalize.
+         * @return {string} - Canonical ID string, or empty string when invalid.
+         */
+        function canonicalId(value) {
+            const trimmed = String(value || '').trim();
+            if (!trimmed) {
+                return '';
+            }
+
+            if (!/^\d+$/.test(trimmed)) {
+                return '';
+            }
+
+            return String(Math.trunc(Number(trimmed)));
+        }
+
+        /**
+         * @brief Determine whether a call event line matches active source/destination filters.
+         * @param {object} lineEntry - A buffered call-event line entry.
+         * @return {boolean} - True if line should be displayed.
+         */
+        function callEventMatchesFilters(lineEntry) {
+            if (callEventsSrcFilter && callEventsSrcFilter !== String(lineEntry.srcId || '')) {
+                return false;
+            }
+
+            if (callEventsDstFilter && callEventsDstFilter !== String(lineEntry.dstId || '')) {
+                return false;
+            }
+
+            return true;
+        }
+
+        /**
+         * @brief Render the call event trace panel from buffered lines.
+         */
+        function renderCallEventsTrace() {
+            const totalLineCount = callEventLines.length;
+            const visibleLines = callEventLines.filter(callEventMatchesFilters);
+            const visibleLineCount = visibleLines.length;
+
+            if (callEventsSrcFilter || callEventsDstFilter) {
+                callEventsCount.textContent = `${visibleLineCount} shown / ${totalLineCount} lines`;
+            } else {
+                callEventsCount.textContent = `${totalLineCount} line${totalLineCount === 1 ? '' : 's'}`;
+            }
+
+            callEventsPauseButton.textContent = callEventsPaused ? 'Resume' : 'Pause';
+            callEventsPauseButton.className = callEventsPaused
+                ? 'inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 border border-amber-500/40 bg-amber-500/15 text-amber-300 shadow-xs hover:bg-amber-500/25 h-8 gap-1.5 rounded-md px-2'
+                : 'inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 h-8 gap-1.5 rounded-md px-2';
+
+            if (!totalLineCount) {
+                callEventsTrace.innerHTML = '<div class="px-4 py-3 text-slate-400">Waiting for call events...</div>';
+                return;
+            }
+
+            if (!visibleLineCount) {
+                callEventsTrace.innerHTML = '<div class="px-4 py-3 text-slate-400">No call events match the current filters.</div>';
+                return;
+            }
+
+            callEventsTrace.innerHTML = visibleLines.map((lineEntry) =>
+                `<div class="border-b border-slate-800/80 px-4 py-1.5 last:border-b-0">${escapeHtml(String(lineEntry.line || ''))}</div>`
+            ).join('');
+            callEventsTrace.scrollTop = callEventsTrace.scrollHeight;
+        }
+
+        /**
+         * @brief Convert an integer value to uppercase hex, with a fixed width when provided.
+         * @param {any} value - Value to convert.
+         * @param {number} width - Optional minimum width.
+         * @return {string} - Uppercase hex or '-'.
+         */
+        function hexValue(value, width) {
+            const numeric = Number(value);
+            if (!Number.isFinite(numeric)) {
+                return '-';
+            }
+
+            const hex = Math.trunc(numeric).toString(16).toUpperCase();
+            if (Number.isFinite(Number(width)) && Number(width) > 0) {
+                return hex.padStart(Number(width), '0');
+            }
+            return hex;
+        }
+
+        /**
+         * @brief Normalize user-supplied opcode filter to uppercase hex (no prefix).
+         * @param {any} value - User input.
+         * @return {string} - Normalized opcode or empty string when invalid.
+         */
+        function canonicalOpcode(value) {
+            const raw = String(value || '').trim();
+            if (!raw) {
+                return '';
+            }
+
+            let token = raw.toUpperCase();
+            if (token.startsWith('0X')) {
+                token = token.slice(2);
+            } else if (token.startsWith('$')) {
+                token = token.slice(1);
+            }
+
+            if (/^\d+$/.test(token) && !/[A-F]/.test(token)) {
+                const decimal = Number(token);
+                if (!Number.isFinite(decimal) || decimal < 0) {
+                    return '';
+                }
+                return Math.trunc(decimal).toString(16).toUpperCase().padStart(2, '0');
+            }
+
+            if (!/^[0-9A-F]+$/.test(token)) {
+                return '';
+            }
+
+            return token.padStart(2, '0');
+        }
+
+        /**
+         * @brief Normalize raw hex bytes to uppercase pairs separated by spaces.
+         * @param {any} value - Raw data field from net event.
+         * @return {string} - Formatted byte string or '-'.
+         */
+        function normalizeRawHexBytes(value) {
+            const token = String(value || '').toUpperCase().replace(/[^0-9A-F]/g, '');
+            if (!token) {
+                return '-';
+            }
+
+            const evenToken = token.length % 2 === 1 ? `0${token}` : token;
+            const bytes = evenToken.match(/../g);
+            if (!bytes) {
+                return '-';
+            }
+
+            return bytes.join(' ');
+        }
+
+        /**
+         * @brief Determine whether a control-event line matches active opcode filter.
+         * @param {object} lineEntry - A buffered control-event line entry.
+         * @return {boolean} - True if line should be displayed.
+         */
+        function controlEventMatchesFilter(lineEntry) {
+            if (!controlEventsOpcodeFilter) {
+                return true;
+            }
+
+            return controlEventsOpcodeFilter === String(lineEntry.opcode || '');
+        }
+
+        /**
+         * @brief Render the CSBK/TSBK/RCCH control net-events trace panel.
+         */
+        function renderControlEventsTrace() {
+            const totalLineCount = controlEventLines.length;
+            const visibleLines = controlEventLines.filter(controlEventMatchesFilter);
+            const visibleLineCount = visibleLines.length;
+
+            if (controlEventsOpcodeFilter) {
+                controlEventsCount.textContent = `${visibleLineCount} shown / ${totalLineCount} lines`;
+            } else {
+                controlEventsCount.textContent = `${totalLineCount} line${totalLineCount === 1 ? '' : 's'}`;
+            }
+
+            controlEventsPauseButton.textContent = controlEventsPaused ? 'Resume' : 'Pause';
+            controlEventsPauseButton.className = controlEventsPaused
+                ? 'inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 border border-amber-500/40 bg-amber-500/15 text-amber-300 shadow-xs hover:bg-amber-500/25 h-8 gap-1.5 rounded-md px-2'
+                : 'inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 h-8 gap-1.5 rounded-md px-2';
+
+            if (!totalLineCount) {
+                controlEventsTrace.innerHTML = '<div class="px-4 py-3 text-slate-400">Waiting for control net events...</div>';
+                return;
+            }
+
+            if (!visibleLineCount) {
+                controlEventsTrace.innerHTML = '<div class="px-4 py-3 text-slate-400">No control events match the opcode filter.</div>';
+                return;
+            }
+
+            controlEventsTrace.innerHTML = visibleLines.map((lineEntry) =>
+                `<div class="border-b border-slate-800/80 px-4 py-1.5 last:border-b-0 whitespace-nowrap">${escapeHtml(String(lineEntry.line || ''))}</div>`
+            ).join('');
+            controlEventsTrace.scrollTop = controlEventsTrace.scrollHeight;
+        }
+
+        /**
+         * @brief Format a CSBK/TSBK/RCCH net event payload into a readable trace line.
+         * @param {object} eventPayload - Inner net_event payload.
+         * @return {string} - Formatted trace line.
+         */
+        function formatControlEventLine(eventPayload) {
+            const now = Date.now();
+            const eventType = String(eventPayload.type || 'unknown').toUpperCase();
+            const srcId = canonicalId(eventPayload.srcId) || '-';
+            const dstId = canonicalId(eventPayload.dstId) || '-';
+            const srcStr = String(eventPayload.srcStr || 'UNK').trim() || 'UNK';
+            const dstStr = String(eventPayload.dstStr || 'UNK').trim() || 'UNK';
+            const desc = String(eventPayload.desc || 'no description').trim() || 'no description';
+            const opcode = `$${hexValue(eventPayload.opcode, 2)}`;
+            const rawData = normalizeRawHexBytes(eventPayload.data);
+
+            return `[${traceTime(now)}] ${eventType}, ${desc}, opcode=${opcode} srcId=${srcId} (${srcStr}) dstId=${dstId} (${dstStr}) [${rawData}]`;
+        }
+
+        /**
+         * @brief Ingest one CSBK/TSBK/RCCH net event into the control trace panel.
+         * @param {object} eventPayload - Inner net_event payload.
+         */
+        function ingestControlEvent(eventPayload) {
+            const opcodeCanonical = canonicalOpcode(hexValue(eventPayload.opcode, 2));
+            controlEventLines.push({
+                line: formatControlEventLine(eventPayload),
+                opcode: opcodeCanonical,
+            });
+            if (controlEventLines.length > controlEventsTraceLimit) {
+                controlEventLines.splice(0, controlEventLines.length - controlEventsTraceLimit);
+            }
+
+            if (!controlEventsPaused) {
+                renderControlEventsTrace();
+            }
+        }
+
+        /**
+         * @brief Convert a SysView call event payload into a trace line.
+         * @param {object} message - A websocket payload with type call_start or call_end.
+         * @return {string} - Formatted call event trace line.
+         */
+        function formatCallEventLine(message) {
+            let eventType = message.type === 'call_end' ? 'CALL_END' : 'CALL_START';
+            const mode = String(message.mode || 'UNK').toUpperCase();
+            const slot = Number.isFinite(Number(message.slot)) ? String(Math.trunc(Number(message.slot))) : '-';
+            const srcId = Number.isFinite(Number(message.srcId)) ? String(Math.trunc(Number(message.srcId))) : '-';
+            const dstId = Number.isFinite(Number(message.dstId)) ? String(Math.trunc(Number(message.dstId))) : '-';
+            const streamId = Number.isFinite(Number(message.streamId)) ? String(Math.trunc(Number(message.streamId))) : '-';
+            const srcStr = String(message.srcStr || 'UNK').trim() || 'UNK';
+            const dstStr = String(message.dstStr || 'UNK').trim() || 'UNK';
+            const now = Date.now();
+            let duration = 0;
+
+            // normalize event type
+            if (eventType === 'CALL_START') {
+                eventType = 'Call Start';
+            } else if (eventType === 'CALL_END') {
+                eventType = 'Call End';
+                duration = Number(message.duration) || 0;
+            }
+
+            // normalize slot display for DMR
+            let ts = '';
+            if (mode == 'DMR') {
+                ts = ` TS${slot}`;
+            }
+
+            let callEndInfo = '';
+            if (eventType === 'Call End') {
+                callEndInfo = `Call Duration ${duration}s`;
+            }
+
+            return `[${traceTime(now)}] ${mode}${ts} ${eventType} -> ${srcId} (${srcStr}) TO ${dstId} (${dstStr}) ${callEndInfo} [ref: ${streamId}]`;
+        }
+
+        /**
+         * @brief Ingest a call event websocket message into the trace panel.
+         * @param {object} message - A websocket payload with type call_start or call_end.
+         */
+        function ingestCallEvent(message) {
+            callEventLines.push({
+                line: formatCallEventLine(message),
+                srcId: canonicalId(message.srcId),
+                dstId: canonicalId(message.dstId),
+            });
+            if (callEventLines.length > callEventsTraceLimit) {
+                callEventLines.splice(0, callEventLines.length - callEventsTraceLimit);
+            }
+
+            if (!callEventsPaused) {
+                renderCallEventsTrace();
+            }
+        }
+
+        /**
+         * @brief Extract a call_start/call_end event from either a direct event or net_event wrapper.
+         * @param {object} message - The raw websocket message object.
+         * @return {object|null} - Call event payload when present; otherwise null.
+         */
+        function extractCallEventFromMessage(message) {
+            if (!message || typeof message !== 'object') {
+                return null;
+            }
+
+            const type = String(message.type || '');
+            if (type !== 'net_event') {
+                return null;
+            }
+
+            const payload = safeObject(message.payload);
+            const payloadType = String(payload.type || '');
+            if (payloadType !== 'call_start' && payloadType !== 'call_end') {
+                return null;
+            }
+
+            return Object.assign({}, payload, {
+                source: String(message.source || payload.source || 'sysview'),
+                generatedAt: Number(message.generatedAt || payload.generatedAt || Date.now() / 1000),
+            });
+        }
+
+        /**
+         * @brief Extract CSBK/TSBK/RCCH payload from a net_event wrapper.
+         * @param {object} message - Raw websocket message.
+         * @return {object|null} - Matching control-event payload or null.
+         */
+        function extractControlEventFromMessage(message) {
+            if (!message || typeof message !== 'object') {
+                return null;
+            }
+
+            if (String(message.type || '') !== 'net_event') {
+                return null;
+            }
+
+            const payload = safeObject(message.payload);
+            const payloadType = String(payload.type || '').toLowerCase();
+            if (payloadType !== 'csbk' && payloadType !== 'tsbk' && payloadType !== 'rcch') {
+                return null;
+            }
+
+            return Object.assign({}, payload, {
+                source: String(message.source || payload.source || 'sysview'),
+                generatedAt: Number(message.generatedAt || payload.generatedAt || Date.now() / 1000),
+            });
+        }
+
+        /**
          * @brief Get a human-readable Site label based on network/site identifiers.
          * @param {object} payload - The payload object containing p25NetId, sysId and siteId.
          * @return {string} - Site label formatted as p25NetId:sysId / p25RfssId.siteId, or '—' when unavailable.
@@ -277,7 +720,7 @@ SPDX-License-Identifier: GPL-2.0-only
          * @return {string} - A human-readable string representing the relative time.
          */
         function formatRelative(secondsAgo) {
-            if (secondsAgo < 1) return 'just now';
+            if (secondsAgo < 1) return '0s ago';
             if (secondsAgo < 60) return `${Math.round(secondsAgo)}s ago`;
             const minutes = Math.floor(secondsAgo / 60);
             if (minutes < 60) return `${minutes}m ago`;
@@ -1157,6 +1600,31 @@ SPDX-License-Identifier: GPL-2.0-only
             scheduleRender(true);
         });
 
+        callEventsPauseButton.addEventListener('click', function () {
+            callEventsPaused = !callEventsPaused;
+            renderCallEventsTrace();
+        });
+
+        callEventsSrcFilterInput.addEventListener('input', function (event) {
+            callEventsSrcFilter = canonicalId(event.target && event.target.value);
+            renderCallEventsTrace();
+        });
+
+        callEventsDstFilterInput.addEventListener('input', function (event) {
+            callEventsDstFilter = canonicalId(event.target && event.target.value);
+            renderCallEventsTrace();
+        });
+
+        controlEventsPauseButton.addEventListener('click', function () {
+            controlEventsPaused = !controlEventsPaused;
+            renderControlEventsTrace();
+        });
+
+        controlEventsOpcodeFilterInput.addEventListener('input', function (event) {
+            controlEventsOpcodeFilter = canonicalOpcode(event.target && event.target.value);
+            renderControlEventsTrace();
+        });
+
         collapseAllButton.addEventListener('click', function () {
             const groupedPeerIds = new Set();
             buildDisplayGroups(Array.from(tiles.values()).sort(compareTiles)).forEach((group) => {
@@ -1376,6 +1844,16 @@ SPDX-License-Identifier: GPL-2.0-only
                     ingestPeerTiles(message);
                 } else if (message.type === 'system_watch_state') {
                     ingestState(message);
+                }
+
+                const callEvent = extractCallEventFromMessage(message);
+                if (callEvent) {
+                    ingestCallEvent(callEvent);
+                }
+
+                const controlEvent = extractControlEventFromMessage(message);
+                if (controlEvent) {
+                    ingestControlEvent(controlEvent);
                 }
             });
 
