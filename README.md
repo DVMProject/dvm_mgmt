@@ -6,6 +6,8 @@
 
 DVM Management CLI provides unified management tools for the DVM FNE with a Cisco IOS-like command-line interface, and a browser-based web UI.
 
+**Be aware this project is a work in progress, and subject to change.**
+
 Run directly without pip install. See [Quick Start](#quick-start) below.
 
 ## Features
