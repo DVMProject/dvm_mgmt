@@ -63,9 +63,9 @@
             ("Peers", stats.get('peerListTotalEntries', 'N/A')),
             ] %}
             {% for label, value in stat_fields %}
-            <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-card border">
-                <span class="text-xs text-muted-foreground">{{ label }}</span>
-                <span class="text-sm font-bold tabular-nums text-foreground">{{ value }}</span>
+            <div class="flex min-w-0 items-center justify-between gap-3 px-3 py-2 rounded-lg bg-card border">
+                <span class="shrink-0 text-xs text-muted-foreground">{{ label }}</span>
+                <span class="min-w-0 truncate text-sm font-bold tabular-nums text-foreground" title="{{ value }}">{{ value }}</span>
             </div>
             {% endfor %}
         </div>

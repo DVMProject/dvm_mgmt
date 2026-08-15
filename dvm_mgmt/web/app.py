@@ -235,7 +235,7 @@ def create_app(config: ConsoleConfig) -> FastAPI:
         allowed_prefixes = (
             "/api/radio/",
             "/api/services/",
-            "/api/backups",
+            "/api/config-files",
         )
         return path.startswith(allowed_prefixes)
 

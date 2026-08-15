@@ -432,6 +432,10 @@ def _clamp_int(value: Any, default: int, low: int, high: int) -> int:
 
 @router.get("/config-files")
 async def list_config_files(request: Request):
+    proxied = await _proxy_if_remote(request)
+    if proxied is not None:
+        return proxied
+
     return JSONResponse({"files": [
         {"id": item.id, "name": item.name, "path": str(item.path)}
         for item in _cfg(request).editable_config_files
@@ -440,6 +444,10 @@ async def list_config_files(request: Request):
 
 @router.get("/config-files/{file_id}")
 async def get_config_file(request: Request, file_id: str):
+    proxied = await _proxy_if_remote(request)
+    if proxied is not None:
+        return proxied
+
     manager = ConfigFileManager(_cfg(request))
     try:
         item, content = manager.read(file_id)
@@ -459,6 +467,10 @@ async def get_config_file(request: Request, file_id: str):
 
 @router.put("/config-files/{file_id}")
 async def save_config_file(request: Request, file_id: str):
+    proxied = await _proxy_if_remote(request)
+    if proxied is not None:
+        return proxied
+
     manager = ConfigFileManager(_cfg(request))
     try:
         payload = await request.json()
@@ -477,6 +489,10 @@ async def save_config_file(request: Request, file_id: str):
 
 @router.post("/config-files/{file_id}/restore/{backup_name}")
 async def restore_config_file(request: Request, file_id: str, backup_name: str):
+    proxied = await _proxy_if_remote(request)
+    if proxied is not None:
+        return proxied
+
     manager = ConfigFileManager(_cfg(request))
     try:
         safety_backup = manager.restore(file_id, backup_name)
@@ -487,6 +503,25 @@ async def restore_config_file(request: Request, file_id: str, backup_name: str):
     except (OSError, UnicodeError) as exc:
         raise HTTPException(status_code=500, detail=f"Unable to restore configuration: {exc}") from exc
     return JSONResponse({"message": "Configuration restored", "backup": safety_backup.name})
+
+
+@router.delete("/config-files/{file_id}/revisions/{backup_name}")
+async def delete_config_revision(request: Request, file_id: str, backup_name: str):
+    proxied = await _proxy_if_remote(request)
+    if proxied is not None:
+        return proxied
+
+    manager = ConfigFileManager(_cfg(request))
+    try:
+        deleted = manager.delete_backup(file_id, backup_name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to delete configuration revision: {exc}") from exc
+    return JSONResponse({"message": "Configuration revision deleted", "revision": deleted.name})
+
 
 @router.get("/status", response_class=HTMLResponse)
 async def get_status(request: Request):

@@ -19,7 +19,7 @@ from typing import List, Tuple
 
 import yaml
 
-from skynet_cli.core.config import ConsoleConfig, EditableConfigFile
+from dvm_mgmt.core.config import ConsoleConfig, EditableConfigFile
 
 
 class ConfigFileManager:
@@ -100,3 +100,17 @@ class ConfigFileManager:
             raise KeyError("Backup is not available for this configuration file")
         content = source.read_text(encoding="utf-8")
         return self.save(file_id, content)
+
+    def delete_backup(self, file_id: str, backup_name: str) -> Path:
+        """Delete one revision belonging to the selected allowlisted file."""
+        normalized_name = Path(backup_name).name
+        if normalized_name != backup_name:
+            raise KeyError("Backup is not available for this configuration file")
+
+        matches = {path.name: path for path in self.backups(file_id)}
+        backup = matches.get(normalized_name)
+        if backup is None:
+            raise KeyError("Backup is not available for this configuration file")
+
+        backup.unlink()
+        return backup

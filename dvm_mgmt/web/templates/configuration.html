@@ -12,20 +12,29 @@ SPDX-License-Identifier: GPL-2.0-only
 {% extends "base.html" %}
 {% block title %}Configuration Files{% endblock %}
 
+{% block head %}
+<style>
+    .config-editor-shell .CodeMirror {
+        height: 100%;
+        min-height: 0;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="space-y-6">
-    <div class="px-5 py-4">
+<div class="space-y-6 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:gap-6 lg:space-y-0">
+    <div class="shrink-0 px-5 py-4">
         <h1 class="text-xl font-bold text-foreground">Configuration Files</h1>
         <p class="mt-1 text-sm text-muted-foreground">Edit explicitly allowlisted configuration YAML files. Every save creates a timestamped backup.</p>
     </div>
 
-    <div class="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <aside class="bg-card rounded-xl border overflow-hidden">
-            <div class="px-4 py-3 border-b text-sm font-semibold">Available files</div>
-            <div id="config-file-list" class="p-2 space-y-1"></div>
+    <div class="grid gap-5 lg:min-h-0 lg:flex-1 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <aside class="bg-card rounded-xl border overflow-hidden lg:flex lg:min-h-0 lg:flex-col">
+            <div class="shrink-0 px-4 py-3 border-b text-sm font-semibold">Available files</div>
+            <div id="config-file-list" class="p-2 space-y-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain"></div>
         </aside>
 
-        <section class="bg-card rounded-xl border overflow-hidden min-w-0">
+        <section class="bg-card rounded-xl border overflow-hidden min-w-0 lg:flex lg:min-h-0 lg:flex-col">
             <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b">
                 <div class="min-w-0">
                     <h2 id="config-title" class="font-semibold">Select a configuration file</h2>
@@ -36,14 +45,30 @@ SPDX-License-Identifier: GPL-2.0-only
                     <button id="save-config" disabled class="h-8 rounded-md bg-primary text-primary-foreground px-3 text-sm disabled:opacity-40">Save with backup</button>
                 </div>
             </div>
-            <div id="config-message" class="hidden mx-5 mt-4 rounded-md border px-3 py-2 text-sm"></div>
-            <div class="p-5">
-                <textarea id="config-editor" aria-label="YAML configuration editor"></textarea>
-                <p class="mt-2 text-xs text-muted-foreground">Indentation uses four spaces. Tabs are converted to spaces.</p>
+            <div id="config-message" class="hidden shrink-0 mx-5 mt-4 rounded-md border px-3 py-2 text-sm"></div>
+            <div class="p-5 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+                <div class="config-editor-shell lg:min-h-0 lg:flex-1">
+                    <textarea id="config-editor" aria-label="YAML configuration editor"></textarea>
+                </div>
+                <p class="shrink-0 mt-2 text-xs text-muted-foreground">Indentation uses four spaces. Tabs are converted to spaces.</p>
             </div>
-            <div class="border-t">
-                <div class="px-5 py-3 font-semibold text-sm">Revision history</div>
-                <div id="config-backups" class="px-5 pb-5 text-sm text-muted-foreground">Select a file to view backups.</div>
+            <div class="shrink-0 border-t" x-data="{ revisionOpen: false }">
+                <button type="button" @click="revisionOpen = !revisionOpen"
+                    :aria-expanded="revisionOpen.toString()" aria-controls="config-backups"
+                    class="flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm font-semibold hover:bg-accent/40">
+                    <span class="flex items-center gap-2">
+                        <svg class="h-4 w-4 transition-transform" :class="revisionOpen && 'rotate-90'" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                        Revision history
+                    </span>
+                    <span id="config-backup-count" class="rounded-full border px-2 py-0.5 text-[11px] font-normal text-muted-foreground">0</span>
+                </button>
+                <div x-show="revisionOpen" x-transition.opacity x-cloak>
+                    <div id="config-backups"
+                        class="max-h-[27.5rem] overflow-y-auto overscroll-contain px-5 pb-3 text-sm text-muted-foreground">Select a file to view backups.</div>
+                </div>
             </div>
         </section>
     </div>
@@ -59,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveButton = document.getElementById('save-config');
     const reloadButton = document.getElementById('reload-config');
     const backups = document.getElementById('config-backups');
+    const backupCount = document.getElementById('config-backup-count');
     let selectedId = null;
     let cleanValue = '';
 
@@ -103,6 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param items An array of backup items to display.
      */
     function renderBackups(items) {
+        backupCount.textContent = String(items.length);
+
         if (!items.length) { 
             backups.textContent = 'No backups have been created yet.'; 
             return; 
@@ -116,11 +144,18 @@ document.addEventListener('DOMContentLoaded', () => {
             label.className = 'font-mono text-xs truncate';
             label.textContent = `${item.created.replace('T', ' ')} — ${item.name}`;
 
-            const button = document.createElement('button');
-            button.className = 'shrink-0 h-7 rounded-md border px-2 text-xs hover:bg-accent';
-            button.textContent = 'Restore';
+            const actions = document.createElement('div');
+            actions.className = 'flex shrink-0 items-center gap-2';
 
-            button.onclick = async () => {
+            const restoreButton = document.createElement('button');
+            restoreButton.className = 'flex h-7 items-center gap-1 rounded-md border px-2 text-xs hover:border-green-700 hover:text-green-400';
+            restoreButton.innerHTML = `
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                <span>Restore</span>`;
+
+            restoreButton.onclick = async () => {
                 if (!confirm(`Restore ${item.name}? The current file will also be backed up.`)) 
                     return;
                 try {
@@ -132,7 +167,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            row.append(label, button);
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'rounded p-1.5 text-foreground transition-colors hover:bg-input hover:text-destructive';
+            deleteButton.innerHTML = `
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>`;
+            deleteButton.title = `Delete revision ${item.name}`;
+            deleteButton.setAttribute('aria-label', `Delete revision ${item.name}`);
+
+            deleteButton.onclick = async () => {
+                if (!confirm(`Permanently delete revision ${item.name}? This cannot be undone.`))
+                    return;
+                try {
+                    await jsonRequest(`${apiRoot}/${encodeURIComponent(selectedId)}/revisions/${encodeURIComponent(item.name)}`, {method: 'DELETE'});
+                    renderBackups(items.filter(candidate => candidate.name !== item.name));
+                    showMessage('Revision deleted successfully.');
+                } catch (error) {
+                    showMessage(error.message, true);
+                }
+            };
+
+            actions.append(restoreButton, deleteButton);
+            row.append(label, actions);
             return row;
         }));
     }
