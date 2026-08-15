@@ -34,10 +34,10 @@ SPDX-License-Identifier: GPL-2.0-only
     <!-- Connected Peers Panel (live, from FNE API) -->
     <div class="bg-card rounded-xl border shadow-2xl">
         <!-- System Selector & Refresh -->
-        <div class="flex items-center justify-between px-5 py-3.5 border-b">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-5 py-3.5 border-b">
             <h2 class="text-sm font-semibold text-foreground">Active Connections <span
                     class="text-xs text-muted-foreground">(30s refresh)</span></h2>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 <button
                     @click="showPanelLoading('#connected-peers-panel', 'Loading connected peers...'); htmx.ajax('GET', '/api/connected-peers?scope=' + scope, {target: '#connected-peers-panel', swap: 'innerHTML'})"
                     class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-all outline-none 

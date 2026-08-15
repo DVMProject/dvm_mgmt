@@ -2,8 +2,8 @@
 {% if error %}
 <p class="text-sm text-red-400 px-1">{{ error }}</p>
 {% elif entries %}
-<div>
-    <table class="w-full text-sm table-sortable">
+<div class="max-h-[70dvh] overflow-auto overscroll-contain 2xl:max-h-none 2xl:overflow-visible">
+    <table class="w-full min-w-[40rem] text-sm table-sortable">
         <thead>
             <tr class="text-left text-xs font-semibold text-foreground uppercase tracking-wider border-b">
                 <th class="bg-card pt-2 pb-2 px-3">RID</th>

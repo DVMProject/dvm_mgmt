@@ -1,0 +1,223 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+/*
+* Digital Voice Modem - Management CLI
+* GPLv2 Open Source. Use is subject to license terms.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+*  Copyright (C) 2026 DVMProject Authors
+*
+*/
+-->
+{% extends "base.html" %}
+{% block title %}Configuration Files{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="px-5 py-4">
+        <h1 class="text-xl font-bold text-foreground">Configuration Files</h1>
+        <p class="mt-1 text-sm text-muted-foreground">Edit explicitly allowlisted configuration YAML files. Every save creates a timestamped backup.</p>
+    </div>
+
+    <div class="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <aside class="bg-card rounded-xl border overflow-hidden">
+            <div class="px-4 py-3 border-b text-sm font-semibold">Available files</div>
+            <div id="config-file-list" class="p-2 space-y-1"></div>
+        </aside>
+
+        <section class="bg-card rounded-xl border overflow-hidden min-w-0">
+            <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b">
+                <div class="min-w-0">
+                    <h2 id="config-title" class="font-semibold">Select a configuration file</h2>
+                    <p id="config-path" class="text-xs text-muted-foreground font-mono truncate"></p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="reload-config" disabled class="h-8 rounded-md border px-3 text-sm disabled:opacity-40 hover:bg-accent">Reload</button>
+                    <button id="save-config" disabled class="h-8 rounded-md bg-primary text-primary-foreground px-3 text-sm disabled:opacity-40">Save with backup</button>
+                </div>
+            </div>
+            <div id="config-message" class="hidden mx-5 mt-4 rounded-md border px-3 py-2 text-sm"></div>
+            <div class="p-5">
+                <textarea id="config-editor" aria-label="YAML configuration editor"></textarea>
+                <p class="mt-2 text-xs text-muted-foreground">Indentation uses four spaces. Tabs are converted to spaces.</p>
+            </div>
+            <div class="border-t">
+                <div class="px-5 py-3 font-semibold text-sm">Revision history</div>
+                <div id="config-backups" class="px-5 pb-5 text-sm text-muted-foreground">Select a file to view backups.</div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const apiRoot = {{ (root_path ~ '/api/config-files') | tojson }};
+    const list = document.getElementById('config-file-list');
+    const message = document.getElementById('config-message');
+    const saveButton = document.getElementById('save-config');
+    const reloadButton = document.getElementById('reload-config');
+    const backups = document.getElementById('config-backups');
+    let selectedId = null;
+    let cleanValue = '';
+
+    const editor = CodeMirror.fromTextArea(document.getElementById('config-editor'), {
+        mode: 'yaml', theme: 'material-darker', lineNumbers: true, lineWrapping: false,
+        indentUnit: 4, tabSize: 4, indentWithTabs: false, smartIndent: true,
+        extraKeys: { Tab: cm => cm.execCommand(cm.somethingSelected() ? 'indentMore' : 'insertSoftTab') }
+    });
+
+    editor.setOption('readOnly', true);
+    editor.on('change', () => { if (selectedId) saveButton.disabled = editor.getValue() === cleanValue; });
+
+    /**
+     * @brief Display a message to the user.
+     * @param text The message text to display.
+     * @param error Whether the message represents an error (default: false).
+     */
+    function showMessage(text, error = false) {
+        message.textContent = text;
+        message.className = `mx-5 mt-4 rounded-md border px-3 py-2 text-sm ${error ? 'border-red-500/50 text-red-400' : 'border-green-500/50 text-green-400'}`;
+    }
+
+    /**
+     * @brief Perform a JSON request to the server.
+     * @param url The URL to send the request to.
+     * @param options Fetch API options (method, headers, body, etc.).
+     * @returns The parsed JSON response.
+     * @throws Error if the request fails or the response is not OK.
+     */
+    async function jsonRequest(url, options = {}) {
+        const response = await fetch(url, options);
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) 
+            throw new Error(data.detail || `Request failed (${response.status})`);
+
+        return data;
+    }
+
+    /**
+     * @brief Render the list of available backups for the currently selected configuration file.
+     * @param items An array of backup items to display.
+     */
+    function renderBackups(items) {
+        if (!items.length) { 
+            backups.textContent = 'No backups have been created yet.'; 
+            return; 
+        }
+
+        backups.replaceChildren(...items.map(item => {
+            const row = document.createElement('div');
+            row.className = 'flex items-center justify-between gap-3 py-2 border-t first:border-t-0';
+
+            const label = document.createElement('span');
+            label.className = 'font-mono text-xs truncate';
+            label.textContent = `${item.created.replace('T', ' ')} — ${item.name}`;
+
+            const button = document.createElement('button');
+            button.className = 'shrink-0 h-7 rounded-md border px-2 text-xs hover:bg-accent';
+            button.textContent = 'Restore';
+
+            button.onclick = async () => {
+                if (!confirm(`Restore ${item.name}? The current file will also be backed up.`)) 
+                    return;
+                try {
+                    await jsonRequest(`${apiRoot}/${encodeURIComponent(selectedId)}/restore/${encodeURIComponent(item.name)}`, {method: 'POST'});
+                    await loadFile(selectedId);
+                    showMessage('Backup restored successfully.');
+                } catch (error) { 
+                    showMessage(error.message, true); 
+                }
+            };
+
+            row.append(label, button);
+            return row;
+        }));
+    }
+
+    /**
+     * @brief Load a configuration file from the server and display its content in the web UI.
+     * @param id The identifier of the configuration file to load.
+     */
+    async function loadFile(id) {
+        try {
+            const data = await jsonRequest(`${apiRoot}/${encodeURIComponent(id)}`);
+            selectedId = id;
+            document.getElementById('config-title').textContent = data.name;
+            document.getElementById('config-path').textContent = data.path;
+
+            cleanValue = data.content;
+
+            editor.setValue(data.content);
+            editor.setOption('readOnly', false);
+
+            saveButton.disabled = true;
+            reloadButton.disabled = false;
+
+            renderBackups(data.backups);
+
+            message.className = 'hidden';
+
+            [...list.children].forEach(node => node.classList.toggle('bg-primary', node.dataset.id === id));
+        } catch (error) { showMessage(error.message, true); }
+    }
+
+    /**
+     * @brief Reload the currently selected configuration file from the server.
+     */
+    reloadButton.onclick = () => selectedId && loadFile(selectedId);
+
+    /**
+     * @brief Save the current content of the configuration file to the server.
+     * Validates the content and updates the file via the API.
+     */
+    saveButton.onclick = async () => {
+        const content = editor.getValue();
+        if (/\t/.test(content)) { 
+            showMessage('Tabs are not allowed in YAML indentation.', true); 
+            return; 
+        }
+
+        saveButton.disabled = true;
+
+        try {
+            const data = await jsonRequest(`${apiRoot}/${encodeURIComponent(selectedId)}`, {
+                method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({content})
+            });
+            await loadFile(selectedId);
+            showMessage(`Saved successfully. Backup: ${data.backup}`);
+        } catch (error) { 
+            showMessage(error.message, true); 
+            saveButton.disabled = false; 
+        }
+    };
+
+    /**
+     * @brief Load and display the content of a configuration file in the web UI.
+     * @param id The identifier of the configuration file to load.
+     */
+    jsonRequest(apiRoot).then(data => {
+        if (!data.files.length) {
+            list.innerHTML = '<p class="p-3 text-sm text-muted-foreground">No files are configured in console.conf.</p>';
+            return;
+        }
+
+        data.files.forEach(file => {
+            const button = document.createElement('button');
+            button.dataset.id = file.id;
+            button.className = 'w-full rounded-md p-2 text-left hover:bg-accent';
+            button.innerHTML = `<span class="block text-sm font-medium"></span><span class="block truncate text-xs text-muted-foreground font-mono"></span>`;
+            button.children[0].textContent = file.name;
+            button.children[1].textContent = file.path;
+            button.onclick = () => loadFile(file.id);
+            list.append(button);
+        });
+
+        loadFile(data.files[0].id);
+
+    }).catch(error => showMessage(error.message, true));
+});
+</script>
+{% endblock %}

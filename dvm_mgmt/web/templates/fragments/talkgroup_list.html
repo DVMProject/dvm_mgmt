@@ -2,13 +2,13 @@
 {% if error %}
 <p class="text-sm text-red-400 px-1">{{ error }}</p>
 {% elif entries %}
-<div>
+<div class="max-h-[70dvh] overflow-auto overscroll-contain 2xl:max-h-none 2xl:overflow-visible">
     {% if loaded_error %}
     <p class="text-xs text-amber-400 px-3 pb-3">FNE loaded-talkgroup status unavailable: {{ loaded_error }}</p>
     <div class="hidden" hx-get="/api/talkgroups/{{ system }}" hx-trigger="load delay:3s once" hx-target="#tg-list-panel"
         hx-swap="innerHTML"></div>
     {% endif %}
-    <table class="w-full text-sm">
+    <table class="w-full min-w-[64rem] text-sm">
         <thead>
             <tr class="text-left text-xs font-semibold text-foreground uppercase tracking-wider border-b">
                 <th class="bg-card pt-2 pb-2 px-3">TGID</th>
@@ -71,7 +71,7 @@
                         View
                     </button>
                     <div id="tg-lists-{{ system }}-{{ loop.index0 }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                        <div class="rounded-xl border bg-card text-foreground text-left p-0 w-full max-w-2xl shadow-2xl max-h-[85vh] overflow-hidden" onclick="event.stopPropagation()" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+                        <div class="rounded-xl border bg-card text-foreground text-left p-0 w-full max-w-2xl shadow-2xl max-h-[85dvh] overflow-hidden" onclick="event.stopPropagation()" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
                         <div class="px-4 py-3 border-b flex items-center justify-between">
                             <h3 class="text-sm font-semibold">TG {{ entry.tgid }} (Slot {{ entry.slot }}) List Configuration</h3>
                             <button onclick="document.getElementById('tg-lists-{{ system }}-{{ loop.index0 }}').classList.add('hidden'); document.body.classList.remove('overflow-hidden');"
@@ -81,7 +81,7 @@
                                 </svg>
                             </button>
                         </div>
-                        <div class="p-4 text-xs overflow-y-auto max-h-[calc(85vh-56px)] overscroll-contain" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+                        <div class="p-4 text-xs overflow-y-auto max-h-[calc(85dvh-56px)] overscroll-contain" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="rounded-md border border-input bg-background/40 p-3 md:col-span-1">
                                 <p class="font-semibold text-foreground">Included Peer IDs</p>

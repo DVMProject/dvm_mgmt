@@ -467,6 +467,13 @@ def create_app(config: ConsoleConfig) -> FastAPI:
         )
         return response
 
+    @app.get("/configuration", response_class=HTMLResponse)
+    async def configuration_page(request: Request):
+        auth_redirect = _require_page_auth(request)
+        if auth_redirect:
+            return auth_redirect
+        return templates.TemplateResponse("configuration.html", _ctx(request, "configuration"))
+
     @app.get("/login", response_class=HTMLResponse)
     async def login_page(request: Request, next: str = "/"):
         root_path = _request_root(request)

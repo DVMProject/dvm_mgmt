@@ -94,8 +94,8 @@ SPDX-License-Identifier: GPL-2.0-only
 
             <form id="add-peer-form" x-ref="addPeerForm"
                 @submit.prevent="htmx.ajax('POST', '/api/peers/' + system, { source: $event.target, target: '#peer-table', swap: 'innerHTML' })"
-                class="px-6 py-5 space-y-4">
-                <div class="grid grid-cols-2 gap-4">
+                class="px-4 sm:px-6 py-5 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {% macro field(label, name, type="text", value="", placeholder="", required=true) %}
                     <div>
                         <label class="block text-xs font-medium text-muted-foreground mb-1">{{ label }}{% if required %}
@@ -127,10 +127,10 @@ SPDX-License-Identifier: GPL-2.0-only
                     </div>
                     {{ field("Peer Name", "peer_name", placeholder="e.g. Site Alpha", required=false) }}
 
-                    <div class="col-span-2 rounded-lg border bg-card/40 p-3 space-y-3">
+                    <div class="sm:col-span-2 rounded-lg border bg-card/40 p-3 space-y-3">
                         <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Configuration
                         </div>
-                        <div class="grid grid-cols-4 gap-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-muted-foreground mb-1">Replica</label>
                                 <select name="replica" 
@@ -187,10 +187,10 @@ SPDX-License-Identifier: GPL-2.0-only
                         </div>
                     </div>
 
-                    <div class="col-span-2 rounded-lg border bg-card/40 p-3 space-y-3">
+                    <div class="sm:col-span-2 rounded-lg border bg-card/40 p-3 space-y-3">
                         <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Jitter Settings
                         </div>
-                        <div class="grid grid-cols-3 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-muted-foreground mb-1">Jitter
                                     Enabled</label>

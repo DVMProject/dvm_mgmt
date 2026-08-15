@@ -19,7 +19,7 @@
     <!-- Service tiles -->
     <div>
         <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Services</p>
-        <div class="grid grid-cols-3 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {% for key, info in services.items() %}
             {% if not (is_subprime and key in ['las', 'rc']) and not (key == 'sysview' and not system_watch_enabled) %}
             <div class="flex flex-col gap-1 p-3 rounded-lg bg-card border shadow-2xl">
@@ -53,7 +53,7 @@
     {% if stats and stats.get('success', True) %}
     <div>
         <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">FNE Statistics</p>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {% set stat_fields = [
             ("Total Calls", stats.get('totalCallsProcessed', 'N/A')),
             ("Call Collisions", stats.get('totalCallCollisions', 'N/A')),

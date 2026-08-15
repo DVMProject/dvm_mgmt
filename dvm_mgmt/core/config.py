@@ -31,6 +31,29 @@ class FederationNodeConfig(BaseModel):
     enabled: bool = Field(default=True, description="Enable this federation target")
 
 
+class EditableConfigFile(BaseModel):
+    """A YAML configuration file explicitly exposed in the web editor."""
+
+    id: str = Field(..., description="Stable identifier used by web routes")
+    name: str = Field(..., description="Human-readable file name")
+    path: Path = Field(..., description="Absolute path to the YAML file")
+
+    @validator('id', 'name')
+    def nonempty_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be empty")
+        return value
+
+    @validator('path')
+    def absolute_yaml_path(cls, value: Path) -> Path:
+        if not value.is_absolute():
+            raise ValueError("must be an absolute path")
+        if value.suffix.lower() not in {'.yml', '.yaml'}:
+            raise ValueError("must identify a .yml or .yaml file")
+        return value
+
+
 class ConsoleConfig(BaseModel):
     """Console configuration model."""
     
@@ -76,7 +99,11 @@ class ConsoleConfig(BaseModel):
         default_factory=list,
         description="Configured federated remote DVM Management nodes",
     )
-    
+    # Web Configuration File Management
+    editable_config_files: List[EditableConfigFile] = Field(
+        default_factory=list,
+        description="Explicitly allowed YAML configuration files editable in the web UI",
+    )
     # File Paths
     system_tgid_acl_file: Optional[Path] = Field(
         default=Path("/opt/dvm/talkgroup_rules.yml"),
@@ -139,7 +166,8 @@ class ConsoleConfig(BaseModel):
         """Load configuration from bash-style config file."""
         config_data = {}
         federation_node_map: Dict[int, Dict[str, Any]] = {}
-        
+        editable_config_file_map: Dict[int, Dict[str, str]] = {}
+
         if not config_file.exists():
             # Return default config
             return cls()
@@ -175,7 +203,14 @@ class ConsoleConfig(BaseModel):
                             normalized = value.strip().lower()
                             bucket['enabled'] = normalized in {'1', 'true', 'yes', 'on'}
                         continue
-                    
+
+                    config_file_match = re.match(r'^CONFIG_FILE_(\d+)_(NAME|PATH)$', key)
+                    if config_file_match:
+                        index = int(config_file_match.group(1))
+                        field = config_file_match.group(2).lower()
+                        editable_config_file_map.setdefault(index, {})[field] = value.strip()
+                        continue
+
                     # Map bash variables to pydantic fields
                     key_map = {
                         'SYSTEM_PORT': 'system_port',
@@ -243,7 +278,20 @@ class ConsoleConfig(BaseModel):
 
             if nodes:
                 config_data['federation_nodes'] = nodes
-        
+
+        if editable_config_file_map:
+            editable_files: List[Dict[str, Any]] = []
+            for index, item in sorted(editable_config_file_map.items()):
+                name = item.get('name', '').strip()
+                path = item.get('path', '').strip()
+                if name and path:
+                    editable_files.append({
+                        'id': str(index),
+                        'name': name,
+                        'path': Path(path),
+                    })
+            config_data['editable_config_files'] = editable_files
+
         return cls(**config_data)
     
     @classmethod

@@ -30,12 +30,13 @@ from urllib.parse import parse_qs
 from pathlib import Path
 from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from markupsafe import Markup
 
 from dvm_mgmt.core.api_client import DVMAPIClient
 from dvm_mgmt.core.config import ConsoleConfig
+from dvm_mgmt.core.config_file_manager import ConfigFileManager
 from dvm_mgmt.core.process_manager import ProcessManager
 from dvm_mgmt.operations.peers import PeerManager
 from dvm_mgmt.operations.radio_ids import RadioIDManager
@@ -428,6 +429,64 @@ def _clamp_int(value: Any, default: int, low: int, high: int) -> int:
 # ---------------------------------------------------------------------------
 # Status / Dashboard
 # ---------------------------------------------------------------------------
+
+@router.get("/config-files")
+async def list_config_files(request: Request):
+    return JSONResponse({"files": [
+        {"id": item.id, "name": item.name, "path": str(item.path)}
+        for item in _cfg(request).editable_config_files
+    ]})
+
+
+@router.get("/config-files/{file_id}")
+async def get_config_file(request: Request, file_id: str):
+    manager = ConfigFileManager(_cfg(request))
+    try:
+        item, content = manager.read(file_id)
+        backups = manager.backups(file_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (OSError, UnicodeError) as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to read configuration: {exc}") from exc
+    return JSONResponse({
+        "id": item.id, "name": item.name, "path": str(item.path), "content": content,
+        "backups": [{"name": path.name, "created": datetime.fromtimestamp(
+            path.stat().st_mtime).isoformat(timespec="seconds")} for path in backups],
+    })
+
+
+@router.put("/config-files/{file_id}")
+async def save_config_file(request: Request, file_id: str):
+    manager = ConfigFileManager(_cfg(request))
+    try:
+        payload = await request.json()
+        content = payload.get("content") if isinstance(payload, dict) else None
+        if not isinstance(content, str):
+            raise ValueError("The request must contain YAML text in 'content'")
+        backup = manager.save(file_id, content)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (OSError, UnicodeError) as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to save configuration: {exc}") from exc
+    return JSONResponse({"message": "Configuration saved", "backup": backup.name})
+
+
+@router.post("/config-files/{file_id}/restore/{backup_name}")
+async def restore_config_file(request: Request, file_id: str, backup_name: str):
+    manager = ConfigFileManager(_cfg(request))
+    try:
+        safety_backup = manager.restore(file_id, backup_name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (OSError, UnicodeError) as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to restore configuration: {exc}") from exc
+    return JSONResponse({"message": "Configuration restored", "backup": safety_backup.name})
 
 @router.get("/status", response_class=HTMLResponse)
 async def get_status(request: Request):
