@@ -32,11 +32,11 @@ class FederationNodeConfig(BaseModel):
 
 
 class EditableConfigFile(BaseModel):
-    """A YAML configuration file explicitly exposed in the web editor."""
+    """A configuration file explicitly exposed in the web editor."""
 
     id: str = Field(..., description="Stable identifier used by web routes")
     name: str = Field(..., description="Human-readable file name")
-    path: Path = Field(..., description="Absolute path to the YAML file")
+    path: Path = Field(..., description="Absolute path to the configuration file")
 
     @validator('id', 'name')
     def nonempty_text(cls, value: str) -> str:
@@ -46,12 +46,17 @@ class EditableConfigFile(BaseModel):
         return value
 
     @validator('path')
-    def absolute_yaml_path(cls, value: Path) -> Path:
+    def absolute_config_path(cls, value: Path) -> Path:
         if not value.is_absolute():
             raise ValueError("must be an absolute path")
-        if value.suffix.lower() not in {'.yml', '.yaml'}:
-            raise ValueError("must identify a .yml or .yaml file")
+        if value.suffix.lower() not in {'.yml', '.yaml', '.csv', '.dat'}:
+            raise ValueError("must identify a .yml, .yaml, .csv, or .dat file")
         return value
+
+    @property
+    def format(self) -> str:
+        """Return the validation/editor format selected by the file extension."""
+        return "yaml" if self.path.suffix.lower() in {'.yml', '.yaml'} else "csv"
 
 
 class ConsoleConfig(BaseModel):
@@ -102,7 +107,7 @@ class ConsoleConfig(BaseModel):
     # Web Configuration File Management
     editable_config_files: List[EditableConfigFile] = Field(
         default_factory=list,
-        description="Explicitly allowed YAML configuration files editable in the web UI",
+        description="Explicit allowlist of files available in Configuration Management",
     )
     # File Paths
     system_tgid_acl_file: Optional[Path] = Field(

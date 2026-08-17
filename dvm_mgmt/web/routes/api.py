@@ -437,7 +437,7 @@ async def list_config_files(request: Request):
         return proxied
 
     return JSONResponse({"files": [
-        {"id": item.id, "name": item.name, "path": str(item.path)}
+        {"id": item.id, "name": item.name, "path": str(item.path), "format": item.format}
         for item in _cfg(request).editable_config_files
     ]})
 
@@ -459,7 +459,8 @@ async def get_config_file(request: Request, file_id: str):
     except (OSError, UnicodeError) as exc:
         raise HTTPException(status_code=500, detail=f"Unable to read configuration: {exc}") from exc
     return JSONResponse({
-        "id": item.id, "name": item.name, "path": str(item.path), "content": content,
+        "id": item.id, "name": item.name, "path": str(item.path), "format": item.format,
+        "content": content,
         "backups": [{"name": path.name, "created": datetime.fromtimestamp(
             path.stat().st_mtime).isoformat(timespec="seconds")} for path in backups],
     })
@@ -476,7 +477,7 @@ async def save_config_file(request: Request, file_id: str):
         payload = await request.json()
         content = payload.get("content") if isinstance(payload, dict) else None
         if not isinstance(content, str):
-            raise ValueError("The request must contain YAML text in 'content'")
+            raise ValueError("The request must contain configuration text in 'content'")
         backup = manager.save(file_id, content)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

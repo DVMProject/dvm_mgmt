@@ -25,7 +25,7 @@ SPDX-License-Identifier: GPL-2.0-only
 <div class="space-y-6 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:gap-6 lg:space-y-0">
     <div class="shrink-0 px-5 py-4">
         <h1 class="text-xl font-bold text-foreground">Configuration Files</h1>
-        <p class="mt-1 text-sm text-muted-foreground">Edit explicitly allowlisted configuration YAML files. Every save creates a timestamped backup.</p>
+        <p class="mt-1 text-sm text-muted-foreground">Edit explicitly allowlisted configuration YAML and CSV-style configuration files. Every save creates a timestamped backup.</p>
     </div>
 
     <div class="grid gap-5 lg:min-h-0 lg:flex-1 lg:grid-cols-[17rem_minmax(0,1fr)]">
@@ -48,9 +48,9 @@ SPDX-License-Identifier: GPL-2.0-only
             <div id="config-message" class="hidden shrink-0 mx-5 mt-4 rounded-md border px-3 py-2 text-sm"></div>
             <div class="p-5 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
                 <div class="config-editor-shell lg:min-h-0 lg:flex-1">
-                    <textarea id="config-editor" aria-label="YAML configuration editor"></textarea>
+                    <textarea id="config-editor" aria-label="Configuration file editor"></textarea>
                 </div>
-                <p class="shrink-0 mt-2 text-xs text-muted-foreground">Indentation uses four spaces. Tabs are converted to spaces.</p>
+                <p id="config-editor-hint" class="shrink-0 mt-2 text-xs text-muted-foreground">Indentation uses four spaces. Tabs are converted to spaces.</p>
             </div>
             <div class="shrink-0 border-t" x-data="{ revisionOpen: false }">
                 <button type="button" @click="revisionOpen = !revisionOpen"
@@ -85,7 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const reloadButton = document.getElementById('reload-config');
     const backups = document.getElementById('config-backups');
     const backupCount = document.getElementById('config-backup-count');
+    const editorHint = document.getElementById('config-editor-hint');
     let selectedId = null;
+    let selectedFormat = 'yaml';
     let cleanValue = '';
 
     const editor = CodeMirror.fromTextArea(document.getElementById('config-editor'), {
@@ -202,13 +204,18 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const data = await jsonRequest(`${apiRoot}/${encodeURIComponent(id)}`);
             selectedId = id;
+            selectedFormat = data.format || (/\.ya?ml$/i.test(data.path) ? 'yaml' : 'csv');
             document.getElementById('config-title').textContent = data.name;
             document.getElementById('config-path').textContent = data.path;
 
             cleanValue = data.content;
 
             editor.setValue(data.content);
+            editor.setOption('mode', selectedFormat === 'yaml' ? 'yaml' : 'text/plain');
             editor.setOption('readOnly', false);
+            editorHint.textContent = selectedFormat === 'yaml'
+                ? 'Indentation uses four spaces. Tabs are converted to spaces.'
+                : 'CSV-style records, comments, trailing fields, and original formatting are preserved.';
 
             saveButton.disabled = true;
             reloadButton.disabled = false;
@@ -232,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     saveButton.onclick = async () => {
         const content = editor.getValue();
-        if (/\t/.test(content)) { 
+        if (selectedFormat === 'yaml' && /\t/.test(content)) {
             showMessage('Tabs are not allowed in YAML indentation.', true); 
             return; 
         }

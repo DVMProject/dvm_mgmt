@@ -8,8 +8,10 @@
 #*  Copyright (C) 2026 DVMProject Authors
 #*
 #*/
-"""Safe management of explicitly configured YAML files."""
+"""Safe management of explicitly configured YAML and delimited-text files."""
 
+import csv
+import io
 import os
 import shutil
 import tempfile
@@ -23,7 +25,7 @@ from dvm_mgmt.core.config import ConsoleConfig, EditableConfigFile
 
 
 class ConfigFileManager:
-    """Read, validate, save, and restore allowlisted YAML configuration files."""
+    """Read, validate, save, and restore allowlisted configuration files."""
 
     def __init__(self, config: ConsoleConfig):
         self.config = config
@@ -43,14 +45,31 @@ class ConfigFileManager:
         return item, item.path.read_text(encoding="utf-8")
 
     @staticmethod
-    def validate(content: str) -> None:
+    def validate(item: EditableConfigFile, content: str) -> None:
+        if "\x00" in content:
+            raise ValueError("Configuration file contains a null byte")
+
+        if item.format == "yaml":
+            try:
+                yaml.safe_load(content)
+            except yaml.YAMLError as exc:
+                mark = getattr(exc, "problem_mark", None)
+                location = f" at line {mark.line + 1}, column {mark.column + 1}" if mark else ""
+                problem = getattr(exc, "problem", None) or str(exc)
+                raise ValueError(f"Invalid YAML{location}: {problem}") from exc
+            return
+
+        # DVM .dat files are CSV-like and commonly include blank lines, comments,
+        # trailing empty fields, and a variable number of optional fields. Parse
+        # non-comment records strictly, but do not impose a schema or rewrite them.
+        records = "".join(
+            line for line in content.splitlines(keepends=True)
+            if line.strip() and not line.lstrip().startswith("#")
+        )
         try:
-            yaml.safe_load(content)
-        except yaml.YAMLError as exc:
-            mark = getattr(exc, "problem_mark", None)
-            location = f" at line {mark.line + 1}, column {mark.column + 1}" if mark else ""
-            problem = getattr(exc, "problem", None) or str(exc)
-            raise ValueError(f"Invalid YAML{location}: {problem}") from exc
+            list(csv.reader(io.StringIO(records), strict=True))
+        except csv.Error as exc:
+            raise ValueError(f"Invalid delimited text: {exc}") from exc
 
     @staticmethod
     def _backup(path: Path) -> Path:
@@ -67,7 +86,7 @@ class ConfigFileManager:
             raise FileNotFoundError(str(path))
         if len(content.encode("utf-8")) > 2 * 1024 * 1024:
             raise ValueError("Configuration file exceeds the 2 MiB editor limit")
-        self.validate(content)
+        self.validate(item, content)
         backup = self._backup(path)
         mode = path.stat().st_mode & 0o7777
         fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=str(path.parent))
