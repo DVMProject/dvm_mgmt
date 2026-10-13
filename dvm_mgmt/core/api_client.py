@@ -14,6 +14,7 @@ REST API Client for DVM Services
 
 import hashlib
 import json
+import threading
 import time
 from dataclasses import dataclass
 from requests import Response
@@ -33,6 +34,12 @@ class RequestSpec:
 
 class DVMAPIClient:
     """Client for interacting with DVM REST API directly over HTTP(S)."""
+
+    # DVM keeps a single authentication token per source host. Keep the
+    # authenticate/request pair atomic so concurrent dashboard polling cannot
+    # replace a token between the two HTTP calls.
+    _endpoint_locks: Dict[Tuple[str, str, int], threading.Lock] = {}
+    _endpoint_locks_guard = threading.Lock()
 
     _SIMPLE_COMMANDS: Dict[str, Tuple[str, str]] = {
         "version": ("GET", "/version"),
@@ -60,6 +67,7 @@ class DVMAPIClient:
         "fne-reset-active-calls": ("GET", "/stat-reset-active-calls"),
         "fne-reset-call-collisions": ("GET", "/stat-reset-call-collisions"),
         "fne-spanning-tree": ("GET", "/spanning-tree"),
+        "fne-health": ("GET", "/health"),
     }
 
     _P25_RID_COMMANDS: Dict[str, str] = {
@@ -199,8 +207,9 @@ class DVMAPIClient:
         """Execute a single call without retry logic."""
         try:
             spec = self._build_request_spec(command, args)
-            token = self._authenticate()
-            response = self._request(spec.method, spec.endpoint, token, spec.payload)
+            with self._endpoint_lock():
+                token = self._authenticate()
+                response = self._request(spec.method, spec.endpoint, token, spec.payload)
 
             parsed = self._parse_response(response)
             normalized = self._normalize_response(parsed)
@@ -245,6 +254,17 @@ class DVMAPIClient:
                 'returncode': -1,
                 'command': command
             }
+
+    def _endpoint_lock(self) -> threading.Lock:
+        """Return the process-wide lock for this REST API endpoint."""
+        scheme = 'https' if self.use_ssl else 'http'
+        key = (scheme, self.host, self.port)
+        with self._endpoint_locks_guard:
+            lock = self._endpoint_locks.get(key)
+            if lock is None:
+                lock = threading.Lock()
+                self._endpoint_locks[key] = lock
+            return lock
 
     def _build_base_url(self) -> str:
         """Build the scheme-qualified base URL for API calls."""

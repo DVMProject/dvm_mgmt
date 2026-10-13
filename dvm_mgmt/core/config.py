@@ -31,6 +31,26 @@ class FederationNodeConfig(BaseModel):
     enabled: bool = Field(default=True, description="Enable this federation target")
 
 
+class FNEHealthTargetConfig(BaseModel):
+    """FNE REST endpoint polled by the dashboard health monitor."""
+
+    id: str = Field(..., description="Unique health target identifier")
+    name: str = Field(..., description="Display name for the FNE")
+    host: str = Field(default="127.0.0.1", description="FNE REST API host")
+    port: int = Field(default=9290, description="FNE REST API port")
+    password: str = Field(default="RPT1234", description="FNE REST API password")
+    use_ssl: bool = Field(default=False, description="Use HTTPS for this target")
+    verify_ssl: bool = Field(default=False, description="Verify the target TLS certificate")
+    enabled: bool = Field(default=True, description="Poll this health target")
+
+    @validator('id', 'name', 'host')
+    def nonempty_health_target_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be empty")
+        return value
+
+
 class EditableConfigFile(BaseModel):
     """A configuration file explicitly exposed in the web editor."""
 
@@ -73,6 +93,14 @@ class ConsoleConfig(BaseModel):
     system_watch_enabled: bool = Field(
         default=True,
         description="Enable or disable the browser System Watch feature",
+    )
+    fne_health_targets: List[FNEHealthTargetConfig] = Field(
+        default_factory=list,
+        description="FNE REST endpoints monitored by the dashboard",
+    )
+    fne_health_timeout_sec: int = Field(
+        default=3,
+        description="Per-FNE dashboard health request timeout (seconds)",
     )
 
     # Federation Configuration
@@ -165,12 +193,25 @@ class ConsoleConfig(BaseModel):
         if v is None:
             return values['dvm_bin_path'] / 'peered'
         return v
+
+    def enabled_fne_health_targets(self) -> List[FNEHealthTargetConfig]:
+        """Return configured targets or the primary system as a fallback."""
+        if self.fne_health_targets:
+            return [target for target in self.fne_health_targets if target.enabled]
+        return [FNEHealthTargetConfig(
+            id="system",
+            name="System FNE",
+            host=self.api_host,
+            port=self.system_port,
+            password=self.system_acl,
+        )]
     
     @classmethod
     def load_bash_config(cls, config_file: Path) -> 'ConsoleConfig':
         """Load configuration from bash-style config file."""
         config_data = {}
         federation_node_map: Dict[int, Dict[str, Any]] = {}
+        fne_health_target_map: Dict[int, Dict[str, Any]] = {}
         editable_config_file_map: Dict[int, Dict[str, str]] = {}
 
         if not config_file.exists():
@@ -209,6 +250,31 @@ class ConsoleConfig(BaseModel):
                             bucket['enabled'] = normalized in {'1', 'true', 'yes', 'on'}
                         continue
 
+                    health_match = re.match(
+                        r'^FNE_HEALTH_NODE_(\d+)_(ID|NAME|HOST|PORT|ACL|SSL|VERIFY_SSL|ENABLED)$',
+                        key,
+                    )
+                    if health_match:
+                        index = int(health_match.group(1))
+                        field = health_match.group(2)
+                        bucket = fne_health_target_map.setdefault(index, {})
+                        if field in {'SSL', 'VERIFY_SSL', 'ENABLED'}:
+                            bucket[{
+                                'SSL': 'use_ssl',
+                                'VERIFY_SSL': 'verify_ssl',
+                                'ENABLED': 'enabled',
+                            }[field]] = value.strip().lower() in {'1', 'true', 'yes', 'on'}
+                        elif field == 'PORT':
+                            bucket['port'] = int(value)
+                        else:
+                            bucket[{
+                                'ID': 'id',
+                                'NAME': 'name',
+                                'HOST': 'host',
+                                'ACL': 'password',
+                            }[field]] = value.strip()
+                        continue
+
                     config_file_match = re.match(r'^CONFIG_FILE_(\d+)_(NAME|PATH)$', key)
                     if config_file_match:
                         index = int(config_file_match.group(1))
@@ -221,6 +287,7 @@ class ConsoleConfig(BaseModel):
                         'SYSTEM_PORT': 'system_port',
                         'SYSTEM_ACL': 'system_acl',
                         'API_HOST': 'api_host',
+                        'FNE_HEALTH_TIMEOUT_SEC': 'fne_health_timeout_sec',
                         'SYSTEM_WATCH_WEBSOCKET_URL': 'sysview_websocket_url',
                         'SYSVIEW_WEBSOCKET_URL': 'sysview_websocket_url',
                         'SYSTEM_WATCH_ENABLED': 'system_watch_enabled',
@@ -283,6 +350,23 @@ class ConsoleConfig(BaseModel):
 
             if nodes:
                 config_data['federation_nodes'] = nodes
+
+        if fne_health_target_map:
+            targets: List[Dict[str, Any]] = []
+            for index, target in sorted(fne_health_target_map.items()):
+                target_id = str(target.get('id') or f"fne-{index}").strip()
+                host = str(target.get('host') or config_data.get('api_host', '127.0.0.1')).strip()
+                targets.append({
+                    'id': target_id,
+                    'name': str(target.get('name') or target_id).strip(),
+                    'host': host,
+                    'port': int(target.get('port', config_data.get('system_port', 9290))),
+                    'password': str(target.get('password', config_data.get('system_acl', 'RPT1234'))),
+                    'use_ssl': bool(target.get('use_ssl', False)),
+                    'verify_ssl': bool(target.get('verify_ssl', False)),
+                    'enabled': bool(target.get('enabled', True)),
+                })
+            config_data['fne_health_targets'] = targets
 
         if editable_config_file_map:
             editable_files: List[Dict[str, Any]] = []

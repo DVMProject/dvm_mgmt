@@ -35,7 +35,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from markupsafe import Markup
 
 from dvm_mgmt.core.api_client import DVMAPIClient
-from dvm_mgmt.core.config import ConsoleConfig
+from dvm_mgmt.core.config import ConsoleConfig, FNEHealthTargetConfig
 from dvm_mgmt.core.config_file_manager import ConfigFileManager
 from dvm_mgmt.core.process_manager import ProcessManager
 from dvm_mgmt.operations.peers import PeerManager
@@ -156,6 +156,42 @@ def _ok(message: str) -> Response:
 def _err(message: str) -> Response:
     """Return an error response carrying a toast notification header."""
     return Response(status_code=200, headers=_toast(message, "error"))
+
+
+def _collect_fne_health(target: FNEHealthTargetConfig, timeout: int) -> dict[str, Any]:
+    """Collect and normalize one FNE health response without exposing credentials."""
+    client = DVMAPIClient(
+        host=target.host,
+        port=target.port,
+        password=target.password,
+        use_ssl=target.use_ssl,
+        verify_ssl=target.verify_ssl,
+        timeout=float(timeout),
+        max_retries=0,
+    )
+    result = client.call("fne-health")
+    health = result.get("health") if isinstance(result, dict) else None
+    if isinstance(result, dict) and result.get("success", False) and isinstance(health, dict):
+        normalized = dict(health)
+        normalized["overall"] = str(normalized.get("overall") or "unknown").lower()
+        normalized.setdefault("reasonCodes", [])
+        normalized.setdefault("reasons", [])
+    else:
+        detail = "FNE health API did not return health data"
+        if isinstance(result, dict):
+            detail = str(result.get("error") or result.get("message") or detail)
+        normalized = {
+            "overall": "unreachable",
+            "reasonCodes": ["REST_API_UNREACHABLE"],
+            "reasons": [detail],
+        }
+
+    return {
+        "id": target.id,
+        "name": target.name,
+        "endpoint": f"{'https' if target.use_ssl else 'http'}://{target.host}:{target.port}",
+        "health": normalized,
+    }
 
 
 def _resolve_log_source(cfg: ConsoleConfig, log_type: str) -> tuple[Path, str]:
@@ -552,6 +588,35 @@ async def get_status(request: Request):
         "stats": stats,
         "spanning_tree": spanning_tree,
         "system_watch_enabled": cfg.system_watch_enabled,
+    })
+
+
+@router.get("/fne-health", response_class=HTMLResponse)
+async def get_fne_health(request: Request):
+    """Render health and alarm state for every locally configured FNE."""
+    proxied = await _proxy_if_remote(request)
+    if proxied is not None:
+        return proxied
+
+    cfg = _cfg(request)
+    targets = cfg.enabled_fne_health_targets()
+    nodes = await asyncio.gather(*[
+        asyncio.to_thread(_collect_fne_health, target, cfg.fne_health_timeout_sec)
+        for target in targets
+    ])
+
+    critical_states = {"failed", "partitioned", "unreachable", "unknown"}
+    warning_states = {"degraded", "initializing"}
+    critical_count = sum(node["health"].get("overall") in critical_states for node in nodes)
+    warning_count = sum(node["health"].get("overall") in warning_states for node in nodes)
+    healthy_count = len(nodes) - critical_count - warning_count
+
+    return _frag(request, "fragments/fne_health.html", {
+        "nodes": nodes,
+        "critical_count": critical_count,
+        "warning_count": warning_count,
+        "healthy_count": healthy_count,
+        "alarm_active": critical_count > 0,
     })
 
 

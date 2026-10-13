@@ -1,0 +1,72 @@
+<!-- fragments/fne_health.html — rendered inline, no base extension -->
+{% macro duration(value) -%}
+    {%- if value is none -%}N/A
+    {%- elif value < 1000 -%}{{ value }} ms
+    {%- elif value < 60000 -%}{{ '%.1f'|format(value / 1000) }} s
+    {%- elif value < 3600000 -%}{{ '%.1f'|format(value / 60000) }} min
+    {%- else -%}{{ '%.1f'|format(value / 3600000) }} hr
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro state_text(state) -%}
+{% set display_state = state or 'N/A' %}
+{% set normalized_state = display_state | lower %}
+{% set known_states = ['healthy', 'idle', 'initializing', 'degraded', 'partitioned', 'failed', 'unreachable', 'unavailable'] %}
+{% set text_state = normalized_state if normalized_state in known_states else 'unknown' %}
+<span class="fne-health-state--{{ text_state }}">{{ display_state }}</span>
+{%- endmacro %}
+
+{% macro state_badge(state) -%}
+{% set state = (state or 'unknown') | lower %}
+{% set known_states = ['healthy', 'idle', 'initializing', 'degraded', 'partitioned', 'failed', 'unreachable', 'unavailable'] %}
+{% set badge_state = state if state in known_states else 'unknown' %}
+<span class="fne-health-badge--{{ badge_state }} inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">{{ state }}</span>
+{%- endmacro %}
+
+<div data-fne-alarm-active="{{ 'true' if alarm_active else 'false' }}" class="space-y-4">
+    <div class="flex flex-wrap items-center gap-2 rounded-lg border px-4 py-3 {{ 'border-red-500/50 bg-red-500/10' if alarm_active else ('border-amber-500/40 bg-amber-500/10' if warning_count else 'border-emerald-500/40 bg-emerald-500/10') }}">
+        <span class="h-2.5 w-2.5 rounded-full {{ 'bg-red-400 animate-pulse' if alarm_active else ('bg-amber-400' if warning_count else 'bg-emerald-400') }}"></span>
+        <span class="text-sm font-semibold {{ 'text-red-200' if alarm_active else ('text-amber-200' if warning_count else 'text-emerald-200') }}">
+            {% if not nodes %}No FNE Health Targets Enabled{% elif alarm_active %}FNE Alarms Active{% elif warning_count %}FNE Health Warning{% else %}All FNEs Operational{% endif %}
+        </span>
+        <span class="text-xs text-muted-foreground">{{ healthy_count }} Operational · {{ warning_count }} Warning · {{ critical_count }} Critical</span>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3">
+        {% for node in nodes %}
+        {% set h = node.health %}
+        {% set overall = (h.get('overall', 'unknown') or 'unknown') | lower %}
+        {% set critical = overall in ['failed', 'partitioned', 'unreachable', 'unknown'] %}
+        {% set plane = h.get('dataPlane', {}) %}
+        {% set queues = h.get('queues', {}) %}
+        {% set connectivity = h.get('connectivity', {}) %}
+        {% set traffic = h.get('traffic', {}) %}
+        {% set tq = queues.get('trafficInboundWorkerQueue', {}) %}
+        {% set mq = queues.get('metadataInboundWorkerQueue', {}) %}
+        <article class="rounded-lg border p-4 {{ 'border-red-500/50 bg-red-950/10' if critical else ('border-amber-500/40' if overall in ['degraded', 'initializing'] else 'border-border') }}">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0"><h3 class="truncate text-sm font-bold text-foreground">{{ node.name }}</h3><p class="truncate font-mono text-xs text-muted-foreground">{% if h.get('fneId') %}ID {{ h.fneId }}{% endif %}</p></div>
+                {{ state_badge(overall) }}
+            </div>
+            {% if h.get('reasons') %}<div class="mt-3 space-y-1" role="alert">{% for reason in h.reasons %}<p class="text-xs {{ 'text-red-300' if critical else 'text-amber-300' }}">{{ reason }}</p>{% endfor %}</div>{% endif %}
+            <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {% for label, state in [('Data plane', plane.get('status')), ('Queues', queues.get('status')), ('Links', connectivity.get('status')), ('Traffic', traffic.get('status'))] %}
+                <div class="rounded-md bg-background/50 px-2 py-1.5"><p class="text-[10px] uppercase tracking-wide text-muted-foreground">{{ label }}</p><p class="truncate text-xs font-semibold">{{ state_text(state) }}</p></div>
+                {% endfor %}
+            </div>
+            {% if overall != 'unreachable' %}
+            <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                <dt class="text-muted-foreground">Traffic Processing Time</dt><dd class="text-right tabular-nums text-foreground">{{ duration(plane.get('traffic', {}).get('lastTickAgeMs')) }}</dd>
+                <dt class="text-muted-foreground">Metadata Processing Time</dt><dd class="text-right tabular-nums text-foreground">{{ duration(plane.get('metadata', {}).get('lastTickAgeMs')) }}</dd>
+                <dt class="text-muted-foreground">Worker In-Flight Queues (lower is better)</dt><dd class="text-right tabular-nums text-foreground">{{ tq.get('inFlight', 0) }} Traffic / {{ mq.get('inFlight', 0) }} Metadata</dd>
+                <dt class="text-muted-foreground">Upstream Connections</dt><dd class="text-right tabular-nums text-foreground">{{ connectivity.get('connectedUpstreams', 0) }} / {{ connectivity.get('configuredUpstreams', 0) }} connected</dd>
+                <dt class="text-muted-foreground">Peers / Child FNEs</dt><dd class="text-right tabular-nums text-foreground">{{ connectivity.get('connectedPeers', 0) }} / {{ connectivity.get('connectedChildren', 0) }}</dd>
+                <dt class="text-muted-foreground">Protocol Traffic Age</dt><dd class="text-right tabular-nums text-foreground">{{ duration(traffic.get('lastProtocolPacketAgeMs')) }}</dd>
+                <dt class="text-muted-foreground">Metadata Traffic Age</dt><dd class="text-right tabular-nums text-foreground">{{ duration(traffic.get('lastMetadataPacketAgeMs')) }}</dd>
+            </dl>
+            {% endif %}
+            {% if h.get('reasonCodes') %}<p class="mt-3 break-words font-mono text-[10px] text-muted-foreground">{{ h.reasonCodes | join(' · ') }}</p>{% endif %}
+        </article>
+        {% endfor %}
+    </div>
+</div>

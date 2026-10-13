@@ -12,6 +12,19 @@ SPDX-License-Identifier: GPL-2.0-only
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 
+{% block head %}
+<style>
+    .fne-health-badge--healthy { border-color: rgb(16 185 129 / .4); background-color: rgb(16 185 129 / .1); color: rgb(110 231 183); }
+    .fne-health-badge--idle, .fne-health-badge--initializing, .fne-health-badge--unknown { border-color: rgb(100 116 139 / .4); background-color: rgb(100 116 139 / .1); color: rgb(203 213 225); }
+    .fne-health-badge--degraded, .fne-health-badge--partitioned { border-color: rgb(245 158 11 / .4); background-color: rgb(245 158 11 / .1); color: rgb(252 211 77); }
+    .fne-health-badge--failed, .fne-health-badge--unreachable, .fne-health-badge--unavailable { border-color: rgb(239 68 68 / .5); background-color: rgb(239 68 68 / .1); color: rgb(252 165 165); }
+    .fne-health-state--healthy { color: rgb(110 231 183); }
+    .fne-health-state--idle, .fne-health-state--initializing, .fne-health-state--unknown { color: rgb(203 213 225); }
+    .fne-health-state--degraded, .fne-health-state--partitioned { color: rgb(252 211 77); }
+    .fne-health-state--failed, .fne-health-state--unreachable, .fne-health-state--unavailable { color: rgb(252 165 165); }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-6">
 
@@ -83,6 +96,25 @@ SPDX-License-Identifier: GPL-2.0-only
 
     </div>
 
+    <!-- FNE health and alarm panel -->
+    <div class="bg-card rounded-xl border text-card-foreground shadow-2xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-200">Health Monitoring</h2>
+                <p class="text-xs text-muted-foreground">FNE Traffic/Metadata Timing, Worker Queues, and Connectivity Alarms</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="fne-health-indicator htmx-indicator flex items-center gap-1.5 text-xs text-muted-foreground">Updating…</span>
+                <span id="fne-health-last-update" class="text-xs text-muted-foreground tabular-nums"></span>
+            </div>
+        </div>
+        <div id="fne-health-panel" class="px-5 pb-5" hx-get="/api/fne-health"
+            hx-trigger="load, every 10s" hx-target="#fne-health-panel" hx-swap="innerHTML"
+            hx-indicator=".fne-health-indicator">
+            <div class="flex items-center gap-2 py-4 text-sm text-muted-foreground">Collecting FNE health…</div>
+        </div>
+    </div>
+
     <!-- Quick action tiles -->
     <div>
         <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Actions</h2>
@@ -117,6 +149,10 @@ SPDX-License-Identifier: GPL-2.0-only
 </div>
 
 <script>
+    document.getElementById('fne-health-panel').addEventListener('htmx:afterSettle', function () {
+        var el = document.getElementById('fne-health-last-update');
+        if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', { hour12: false });
+    });
     document.getElementById('status-panel').addEventListener('htmx:afterSettle', function () {
         var el = document.getElementById('status-last-update');
         if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', { hour12: false });
