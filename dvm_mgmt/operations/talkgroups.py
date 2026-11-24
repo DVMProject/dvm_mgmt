@@ -57,23 +57,19 @@ class TalkgroupManager:
         except subprocess.CalledProcessError:
             return False
 
-    def reload(self, system: str = "both") -> Dict[str, Any]:
+    def reload(self, system: str = "system") -> Dict[str, Any]:
         """
         Reload talkgroups from file.
 
         Args:
-            system: System to reload ('system', 'issi', or 'both')
+            system: Must be 'system'
 
         Returns:
             Result dictionary
         """
-        results = {}
-
-        if system in ("system", "both"):
-            results["system"] = self.system_api.reload_talkgroups()
-            results["system_update"] = self.system_api.force_update()
-
-        if system in ("issi", "both"):
-            results["issi"] = self.issi_api.reload_talkgroups()
-
-        return results
+        if system != "system":
+            raise ValueError(f"Invalid system type: {system}")
+        return {
+            "system": self.system_api.reload_talkgroups(),
+            "system_update": self.system_api.force_update(),
+        }

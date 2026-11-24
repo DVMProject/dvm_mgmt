@@ -91,27 +91,28 @@ class LogColorizer:
         return line
 
 
-def view_syslog_fne(system_only: bool = True, netsplit: bool = False, 
+def view_syslog_fne(netsplit: bool = False,
                     duplicates: bool = False, unauthorized: bool = False, scrollback: int = 5000, tail: bool = False,
+                    grep_pattern: Optional[str] = None,
                     log_file: Optional[str] = None, log_prefix_system: Optional[str] = None) -> None:
     """
     View FNE logs from syslog with colorization.
     
     Args:
-        system_only: If True, show system logs; if False, show PUBLIC logs only
         netsplit: Show only netsplit messages
         duplicates: Show only duplicate messages
         unauthorized: Show only unauthorized messages
         scrollback: Number of lines to show
         tail: If True, use tail -f for live following
+        grep_pattern: Optional extended regular expression used to filter matching log lines
         log_file: Log file path (defaults to /var/log/syslog if not provided)
-        log_prefix_system: System log prefix (defaults to SKYN-FNE1-CR if not provided)
+        log_prefix_system: System log prefix (defaults to SKYN-FNE1-CR1 if not provided)
     """
     # Use configuration values or defaults
     if log_file is None:
         log_file = "/var/log/syslog"
     if log_prefix_system is None:
-        log_prefix_system = "SKYN-FNE1-CR"
+        log_prefix_system = "SKYN-FNE1-CR1"
     
     colorizer = LogColorizer()
     processes = []  # Track all processes for cleanup
@@ -119,7 +120,7 @@ def view_syslog_fne(system_only: bool = True, netsplit: bool = False,
     try:
         if netsplit:
             # Static grep for netsplit messages
-            grep1 = subprocess.Popen(["sudo", "grep", "-E", f"{log_prefix_system}", log_file],
+            grep1 = subprocess.Popen(["sudo", "grep", "-E", "--", log_prefix_system, log_file],
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             grep2 = subprocess.Popen(["grep", "-E", "netsplit"],
                                     stdin=grep1.stdout, stdout=subprocess.PIPE, 
@@ -130,12 +131,10 @@ def view_syslog_fne(system_only: bool = True, netsplit: bool = False,
             for line in grep2.stdout:
                 print(colorizer.colorize_fne(line.rstrip()))
             grep2.wait()
-            # Add pause after displaying netsplit logs
-            input("\nPress Enter to continue...")
             
         elif duplicates:
             # Static grep for duplicate messages
-            grep1 = subprocess.Popen(["sudo", "grep", "-E", f"{log_prefix_system}", log_file],
+            grep1 = subprocess.Popen(["sudo", "grep", "-E", "--", log_prefix_system, log_file],
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             grep2 = subprocess.Popen(["grep", "-E", "duplicate"],
                                     stdin=grep1.stdout, stdout=subprocess.PIPE, 
@@ -146,12 +145,10 @@ def view_syslog_fne(system_only: bool = True, netsplit: bool = False,
             for line in grep2.stdout:
                 print(colorizer.colorize_fne(line.rstrip()))
             grep2.wait()
-            # Add pause after displaying duplicate logs
-            input("\nPress Enter to continue...")
 
         elif unauthorized:
             # Static grep for unauthorized messages
-            grep1 = subprocess.Popen(["sudo", "grep", "-E", f"{log_prefix_system}", log_file],
+            grep1 = subprocess.Popen(["sudo", "grep", "-E", "--", log_prefix_system, log_file],
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             grep2 = subprocess.Popen(["grep", "-E", "unauthorized"],
                                     stdin=grep1.stdout, stdout=subprocess.PIPE, 
@@ -162,48 +159,80 @@ def view_syslog_fne(system_only: bool = True, netsplit: bool = False,
             for line in grep2.stdout:
                 print(colorizer.colorize_fne(line.rstrip()))
             grep2.wait()
-            # Add pause after displaying unauthorized logs
-            input("\nPress Enter to continue...")
 
         else:
             # Live tail with follow (or static display)
-            pattern = f"{log_prefix_system}" if system_only else ""
+            pattern = log_prefix_system
             
-            # Use -f flag for tail mode, otherwise just show recent lines
-            tail_args = ["sudo", "tail", "-n", str(scrollback)]
-            if tail:  # Only follow if explicitly requested
-                tail_args.append("-f")
-            tail_args.append(log_file)
-            
-            # Create processes with new process group for easier cleanup
-            tail_proc = subprocess.Popen(tail_args,
-                                    stdout=subprocess.PIPE, 
-                                    stderr=subprocess.PIPE,
-                                    preexec_fn=os.setpgrp if hasattr(os, 'setpgrp') else None)
-            grep_proc = subprocess.Popen(["grep", "-E", pattern],
-                                   stdin=tail_proc.stdout, 
-                                   stdout=subprocess.PIPE, 
-                                   stderr=subprocess.PIPE, 
-                                   text=True,
-                                   preexec_fn=os.setpgrp if hasattr(os, 'setpgrp') else None)
-            tail_proc.stdout.close()
-            processes.extend([tail_proc, grep_proc])
+            if grep_pattern and not tail:
+                # A static filtered search examines the complete log rather than
+                # only the final scrollback window.
+                grep_proc = subprocess.Popen(
+                    ["sudo", "grep", "-aE", "--", pattern, log_file],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    preexec_fn=os.setpgrp if hasattr(os, 'setpgrp') else None,
+                )
+                processes.append(grep_proc)
+            else:
+                tail_args = ["sudo", "tail", "-n", str(scrollback)]
+                if tail:
+                    tail_args.append("-f")
+                tail_args.append(log_file)
+
+                tail_proc = subprocess.Popen(
+                    tail_args,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    preexec_fn=os.setpgrp if hasattr(os, 'setpgrp') else None,
+                )
+                prefix_filter_args = ["grep", "-E"]
+                if tail:
+                    prefix_filter_args.append("--line-buffered")
+                prefix_filter_args.extend(["--", pattern])
+                grep_proc = subprocess.Popen(
+                    prefix_filter_args,
+                    stdin=tail_proc.stdout,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    preexec_fn=os.setpgrp if hasattr(os, 'setpgrp') else None,
+                )
+                tail_proc.stdout.close()
+                processes.extend([tail_proc, grep_proc])
+
+            output_proc = grep_proc
+            if grep_pattern:
+                filter_args = ["grep", "-aiE"]
+                if tail:
+                    filter_args.append("--line-buffered")
+                filter_args.extend(["--", grep_pattern])
+                filter_proc = subprocess.Popen(
+                    filter_args,
+                    stdin=grep_proc.stdout,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    preexec_fn=os.setpgrp if hasattr(os, 'setpgrp') else None,
+                )
+                grep_proc.stdout.close()
+                processes.append(filter_proc)
+                output_proc = filter_proc
             
             # Print header for static display (non-tail mode)
             if not tail:
-                log_type_label = "SYSTEM" if system_only else "PUBLIC"
-                print(f"\n--- {log_type_label} Log (last {scrollback} lines) ---\n")
+                if grep_pattern:
+                    print(f"\n--- SYSTEM Log (matching {grep_pattern!r}) ---\n")
+                else:
+                    print(f"\n--- SYSTEM Log (last {scrollback} lines) ---\n")
             
             # Read and colorize output line by line
-            for line in grep_proc.stdout:
+            for line in output_proc.stdout:
                 print(colorizer.colorize_fne(line.rstrip()))
-                
-            grep_proc.wait()
-            tail_proc.wait()
-            
-            # Add pause after displaying static logs
-            if not tail:
-                input("\nPress Enter to continue...")
+
+            for proc in reversed(processes):
+                proc.wait()
             
     except KeyboardInterrupt:
         # Clean exit on Ctrl+C - terminate all subprocesses

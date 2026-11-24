@@ -1146,7 +1146,7 @@ SPDX-License-Identifier: GPL-2.0-only
          */
         async function loadPeerAliases() {
             try {
-                const response = await fetch(normalizedRoot + '/api/system-watch/peer-aliases?system=both', {
+                const response = await fetch(normalizedRoot + '/api/system-watch/peer-aliases?system=system', {
                     credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json',

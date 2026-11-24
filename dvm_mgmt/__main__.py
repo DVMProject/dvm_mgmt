@@ -70,6 +70,8 @@ Examples:
   run --mode cli              # Force CLI mode
   run --mode web              # Start web interface (default port 8080)
   run --mode web --web-port 9090
+  run --mode web --web-foreground-logs
+  run --mode web --web-log-level debug
   run --config /path          # Use custom config file
 
 Copyright (C) 2026 DVMProject Authors
@@ -98,6 +100,17 @@ Copyright (C) 2026 DVMProject Authors
         type=int,
         default=8080,
         help="Web interface port (default: 8080)",
+    )
+    parser.add_argument(
+        "--web-foreground-logs",
+        action="store_true",
+        help="Write Uvicorn web logs to the foreground instead of syslog",
+    )
+    parser.add_argument(
+        "--web-log-level",
+        choices=["critical", "error", "warning", "info", "debug", "trace"],
+        default="info",
+        help="Uvicorn web log level (default: info)",
     )
     parser.add_argument(
         "--debug",
@@ -141,6 +154,8 @@ Copyright (C) 2026 DVMProject Authors
                 config_file=args.config,
                 host=args.web_host,
                 port=args.web_port,
+                foreground_logs=args.web_foreground_logs,
+                log_level=args.web_log_level,
             )
         else:
             from dvm_mgmt.cli.cisco_cli import main as cli_main

@@ -102,5 +102,16 @@ SPDX-License-Identifier: GPL-2.0-only
         {% endfor %}
 
     </div>
+
+    <div class="bg-card rounded-xl border shadow-sm">
+        <div class="px-5 py-4 border-b">
+            <h2 class="text-sm font-semibold text-foreground">Recent Subscriber Operations</h2>
+            <p class="mt-1 text-xs text-muted-foreground">The 50 most recent tracked operations reported by the FNE.</p>
+        </div>
+        <div id="subscriber-operations" hx-get="/api/radio/operations"
+            hx-trigger="load, every 10s, subscriberOperationsChanged from:body" hx-swap="innerHTML"
+            class="min-h-32 overflow-x-auto">
+        </div>
+    </div>
 </div>
 {% endblock %}

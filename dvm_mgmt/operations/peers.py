@@ -12,11 +12,11 @@
 Peer management operations.
 
 Peer ACL File Format (CSV):
-peer_id,password,replica,peer_name,request_key,can_inhibit,call_priority,jitter,max_size,max_wait
+peer_id,password,replica,peer_name,request_key,can_inhibit,call_priority,jitter,max_size,max_wait,telephone_interconnect,allow_unit_to_unit
 
 Example:
-1001,MyPassword,0,Site1,0,0,0,360,12582912,25
-1002,OtherPass,1,Site2Replica,1,1,0,360,12582912,25
+1001,MyPassword,0,Site1,0,0,0,0,4,40000,0,1
+1002,OtherPass,1,Site2Replica,1,1,0,0,4,40000,0,1
 """
 
 import subprocess
@@ -45,6 +45,8 @@ class Peer:
     jitter: int = 360
     max_size: int = 12582912
     max_wait: int = 25
+    telephone_interconnect: int = 0
+    allow_unit_to_unit: int = 1
 
 
 class PeerManager:
@@ -54,7 +56,6 @@ class PeerManager:
         self,
         config: Optional["ConsoleConfig"] = None,
         system_peer_file: Optional[str] = None,
-        public_peer_file: Optional[str] = None,
         peered_path: Optional[str] = None,
     ):
         """
@@ -63,7 +64,6 @@ class PeerManager:
         Args:
             config: Console configuration (optional)
             system_peer_file: Path to system peer list CSV (optional, overrides config)
-            public_peer_file: Path to public peer list CSV (optional, overrides config)
             peered_path: Path to peered binary (optional, overrides config)
         """
         # Load configuration or use defaults
@@ -77,13 +77,6 @@ class PeerManager:
         else:
             self.system_peer_file = Path("/opt/dvm/peer_list.dat")
 
-        if public_peer_file:
-            self.public_peer_file = Path(public_peer_file)
-        elif self.config and hasattr(self.config, "public_peerid_acl_file"):
-            self.public_peer_file = self.config.public_peerid_acl_file
-        else:
-            self.public_peer_file = Path("/opt/dvm/peer_list.public.dat")
-
         # Set peered binary path
         if peered_path:
             self.peered_path = Path(peered_path)
@@ -94,12 +87,9 @@ class PeerManager:
 
     def _get_peer_file(self, system: str) -> Path:
         """Get the appropriate peer file path."""
-        if system == "system":
-            return self.system_peer_file
-        elif system == "public":
-            return self.public_peer_file
-        else:
+        if system != "system":
             raise ValueError(f"Invalid system type: {system}")
+        return self.system_peer_file
 
     def _read_peers(self, peer_file: Path) -> List[Peer]:
         """
@@ -125,7 +115,7 @@ class PeerManager:
                         continue
 
                     # Parse peer entry
-                    # Format: peer_id,password,replica,peer_name,req_key,can_inh,call_pri,jitter,max_size,max_wait
+                    # Format: peer_id,password,replica,peer_name,req_key,can_inh,call_pri,jitter,max_size,max_wait,tel_int,allow_u2u
                     peer = Peer(
                         peer_id=int(row[0]) if row[0] else 0,
                         password=row[1] if len(row) > 1 else "",
@@ -137,6 +127,8 @@ class PeerManager:
                         jitter=int(row[7]) if len(row) > 7 and row[7] else 360,
                         max_size=int(row[8]) if len(row) > 8 and row[8] else 12582912,
                         max_wait=int(row[9]) if len(row) > 9 and row[9] else 25,
+                        telephone_interconnect=int(row[10]) if len(row) > 10 and row[10] else 0,
+                        allow_unit_to_unit=int(row[11]) if len(row) > 11 and row[11] else 1,
                     )
                     peers.append(peer)
 
@@ -172,6 +164,8 @@ class PeerManager:
                             peer.jitter,
                             peer.max_size,
                             peer.max_wait,
+                            peer.telephone_interconnect,
+                            peer.allow_unit_to_unit,
                         ]
                     )
 
@@ -183,7 +177,7 @@ class PeerManager:
         List all peers.
 
         Args:
-            system: System type ('system' or 'public')
+            system: Must be 'system'
 
         Returns:
             List of peer dictionaries
@@ -203,6 +197,8 @@ class PeerManager:
                 "jitter": p.jitter,
                 "max_size": p.max_size,
                 "max_wait": p.max_wait,
+                "telephone_interconnect": p.telephone_interconnect,
+                "allow_unit_to_unit": p.allow_unit_to_unit,
                 "enabled": True,  # CSV format doesn't have enabled field - all entries are enabled
             }
             for p in peers
@@ -221,12 +217,14 @@ class PeerManager:
         jitter: int = 360,
         max_size: int = 12582912,
         max_wait: int = 25,
+        telephone_interconnect: int = 0,
+        allow_unit_to_unit: int = 1,
     ) -> Tuple[bool, str]:
         """
         Add a new peer.
 
         Args:
-            system: System type ('system' or 'public')
+            system: Must be 'system'
             peer_id: Peer ID
             password: Peer password
             replica: Replica flag (0 or 1)
@@ -237,6 +235,8 @@ class PeerManager:
             jitter: Jitter buffer size
             max_size: Maximum packet size
             max_wait: Maximum wait time
+            telephone_interconnect: Telephone interconnect gateway flag
+            allow_unit_to_unit: Unit-to-unit routing permission flag
 
         Returns:
             Tuple of (success, message)
@@ -262,6 +262,8 @@ class PeerManager:
                 jitter=jitter,
                 max_size=max_size,
                 max_wait=max_wait,
+                telephone_interconnect=telephone_interconnect,
+                allow_unit_to_unit=allow_unit_to_unit,
             )
             peers.append(new_peer)
 
@@ -278,7 +280,7 @@ class PeerManager:
         Remove a peer.
 
         Args:
-            system: System type ('system' or 'public')
+            system: Must be 'system'
             peer_id: Peer ID to remove
 
         Returns:
@@ -308,7 +310,7 @@ class PeerManager:
         Enable a peer (no-op for CSV format - peers are always enabled if present).
 
         Args:
-            system: System type ('system' or 'public')
+            system: Must be 'system'
             peer_id: Peer ID
 
         Returns:
@@ -331,7 +333,7 @@ class PeerManager:
         Note: CSV format doesn't support disabled state - to disable, the peer must be removed.
 
         Args:
-            system: System type ('system' or 'public')
+            system: Must be 'system'
             peer_id: Peer ID
 
         Returns:
@@ -354,12 +356,14 @@ class PeerManager:
         jitter: Optional[int] = None,
         max_size: Optional[int] = None,
         max_wait: Optional[int] = None,
+        telephone_interconnect: Optional[int] = None,
+        allow_unit_to_unit: Optional[int] = None,
     ) -> Tuple[bool, str]:
         """
         Update an existing peer.
 
         Args:
-            system: System type ('system' or 'public')
+            system: Must be 'system'
             peer_id: Peer ID to update
             password: Optional new password
             replica: Optional new replica flag
@@ -370,6 +374,8 @@ class PeerManager:
             jitter: Optional jitter value
             max_size: Optional max_size value
             max_wait: Optional max_wait value
+            telephone_interconnect: Optional telephone interconnect gateway flag
+            allow_unit_to_unit: Optional unit-to-unit routing permission flag
 
         Returns:
             Tuple of (success, message)
@@ -400,6 +406,10 @@ class PeerManager:
                         peer.max_size = max_size
                     if max_wait is not None:
                         peer.max_wait = max_wait
+                    if telephone_interconnect is not None:
+                        peer.telephone_interconnect = telephone_interconnect
+                    if allow_unit_to_unit is not None:
+                        peer.allow_unit_to_unit = allow_unit_to_unit
                     found = True
                     break
 
@@ -419,7 +429,7 @@ class PeerManager:
         Open peer file in interactive editor (peered or nano/vi).
 
         Args:
-            system: System type ('system' or 'public')
+            system: Must be 'system'
 
         Returns:
             Tuple of (success, message)

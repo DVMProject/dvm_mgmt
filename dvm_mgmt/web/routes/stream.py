@@ -150,34 +150,15 @@ async def _proxy_if_remote_stream(request: Request):
 def _resolve_log_source(cfg: ConsoleConfig, log_type: str) -> tuple[Path, str]:
     normalized = log_type.replace("-", "_")
 
-    if normalized in ("system", "public", "fne"):
-        return Path(cfg.log_file), normalized
-
-    if normalized == "las_wifi":
-        pattern = str(cfg.las_log_path / f"{cfg.las_wifi_log_name}-*.log")
-    elif normalized == "las_internet":
-        pattern = str(cfg.las_log_path / f"{cfg.las_internet_log_name}-*.log")
-    elif normalized == "rc":
-        pattern = str(cfg.rc_log_path / f"{cfg.rc_log_name}-*.log")
-    else:
+    if normalized != "system":
         raise ValueError(f"Unknown log type: {log_type}")
-
-    matches = glob.glob(pattern)
-    if not matches:
-        raise FileNotFoundError(f"Log file not found for pattern: {pattern}")
-
-    newest = max(matches, key=lambda p: Path(p).stat().st_mtime)
-    return Path(newest), normalized
+    return Path(cfg.log_file), normalized
 
 
 def _line_matches_prefix(line: str, mode: str, cfg: ConsoleConfig) -> bool:
     if mode == "system":
         return cfg.log_prefix_system in line
-    if mode == "public":
-        return cfg.log_prefix_public in line
-    if mode == "fne":
-        return cfg.log_prefix_system in line or cfg.log_prefix_public in line
-    return True
+    return mode == "system" and cfg.log_prefix_system in line
 
 
 def _tail_filtered_lines(path: Path, limit: int, matches, max_bytes: int = 4 * 1024 * 1024) -> list[str]:

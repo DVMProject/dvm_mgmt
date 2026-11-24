@@ -17,8 +17,8 @@ Run directly without pip install. See [Quick Start](#quick-start) below.
 - **Unified Operations**: Single codebase for all management operations
 - **REST API Integration**: Direct communication with dvmhost/fne services
 - **Radio Operations**: RID inhibit/uninhibit, paging, and status checks
-- **Log Management**: System and public log viewing with filtering
-- **Talkgroup Management**: System and public talkgroup configuration
+- **Log Management**: System log viewing with filtering
+- **Talkgroup Management**: System talkgroup configuration
 - **No Installation Required**: Run directly with `./run` or install as package
 
 ## Quick Start
@@ -59,6 +59,9 @@ run --mode web
 # Custom host and port
 run --mode web --web-host 127.0.0.1 --web-port 9090
 
+# Keep Uvicorn logs in the foreground or change their verbosity
+run --mode web --web-foreground-logs --web-log-level debug
+
 # Use a custom config file
 run --mode web --config /opt/console.conf
 ```
@@ -79,7 +82,7 @@ Open `http://<host>:8080` in a browser. Log in with a local Linux system account
 | `/radio-ids` | Configured radio ID ACL viewer |
 | `/radio` | Radio operations (RID inhibit/uninhibit, paging, status) |
 | `/services` | Service control (start, stop, reload) |
-| `/logs` | System and public log viewer |
+| `/logs` | System log viewer |
 | `/console` | Live CLI terminal via WebSocket |
 
 #### Web UI Environment Variables

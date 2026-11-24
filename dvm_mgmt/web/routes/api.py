@@ -60,6 +60,12 @@ def _cfg(request: Request) -> ConsoleConfig:
     return request.app.state.config
 
 
+def _require_system(system: str) -> None:
+    """Reject alternate datasets; DVM Management exposes only system ACLs."""
+    if system != "system":
+        raise HTTPException(status_code=404, detail="Unknown system")
+
+
 def _fed(request: Request) -> FederationManager:
     """Return the shared federation manager bound to the application."""
     return request.app.state.federation
@@ -198,7 +204,7 @@ def _resolve_log_source(cfg: ConsoleConfig, log_type: str) -> tuple[Path, str]:
     """Resolve the backing log file and prefix mode for a web log type."""
     normalized = log_type.replace("-", "_")
 
-    if normalized in ("system", "fne"):
+    if normalized == "system":
         return Path(cfg.log_file), normalized
     else:
         raise ValueError(f"Unknown log type: {log_type}")
@@ -214,8 +220,6 @@ def _resolve_log_source(cfg: ConsoleConfig, log_type: str) -> tuple[Path, str]:
 def _line_matches_prefix(line: str, mode: str, cfg: ConsoleConfig) -> bool:
     """Return whether a log line belongs to the selected logical log stream."""
     if mode == "system":
-        return cfg.log_prefix_system in line
-    if mode == "fne":
         return cfg.log_prefix_system in line
     return True
 
@@ -712,6 +716,7 @@ async def get_connected_peers(request: Request, scope: str = "system"):
 
 @router.get("/peers/{system}", response_class=HTMLResponse)
 async def list_peers(request: Request, system: str):
+    _require_system(system)
     cfg = _cfg(request)
     mgr = PeerManager(cfg)
     peers = await asyncio.to_thread(mgr.list_peers, system)
@@ -719,14 +724,15 @@ async def list_peers(request: Request, system: str):
 
 
 @router.get("/system-watch/peer-aliases")
-async def system_watch_peer_aliases(request: Request, system: str = "both"):
+async def system_watch_peer_aliases(request: Request, system: str = "system"):
     cfg = _cfg(request)
     if not cfg.system_watch_enabled:
         return JSONResponse({"detail": "System Watch is disabled"}, status_code=404)
 
     mgr = PeerManager(cfg)
 
-    normalized = (system or "both").strip().lower()
+    normalized = (system or "system").strip().lower()
+    _require_system(normalized)
 
     aliases: dict[str, str] = {}
     try:
@@ -752,6 +758,7 @@ async def add_peer(
     request: Request,
     system: str,
 ):
+    _require_system(system)
     cfg = _cfg(request)
     mgr = PeerManager(cfg)
     try:
@@ -784,6 +791,8 @@ async def add_peer(
         jitter = _clamp_int(payload_data.get("jitter", 360), 360, 0, 360000)
         max_size = _clamp_int(payload_data.get("max_size", 4), 4, 0, 100000)
         max_wait = _clamp_int(payload_data.get("max_wait", 40000), 40000, 0, 3600000)
+        telephone_interconnect = _clamp_int(payload_data.get("telephone_interconnect", 0), 0, 0, 1)
+        allow_unit_to_unit = _clamp_int(payload_data.get("allow_unit_to_unit", 1), 1, 0, 1)
 
         existing_peers = await asyncio.to_thread(mgr.list_peers, system)
         if any(int(p.get("id", -1)) == peer_id for p in existing_peers):
@@ -793,6 +802,7 @@ async def add_peer(
             mgr.add_peer, system, peer_id, password, replica,
             peer_name, request_key, can_inhibit, call_priority,
             jitter, max_size, max_wait,
+            telephone_interconnect, allow_unit_to_unit,
         )
         if not success:
             return Response(status_code=400, headers=_toast(msg, "error"))
@@ -810,6 +820,7 @@ async def update_peer(
     system: str,
     peer_id: int,
 ):
+    _require_system(system)
     cfg = _cfg(request)
     mgr = PeerManager(cfg)
     try:
@@ -847,11 +858,14 @@ async def update_peer(
         jitter = _opt_int("jitter", None, 0, 360000)
         max_size = _opt_int("max_size", None, 0, 100000)
         max_wait = _opt_int("max_wait", None, 0, 3600000)
+        telephone_interconnect = _opt_int("telephone_interconnect", None, 0, 1)
+        allow_unit_to_unit = _opt_int("allow_unit_to_unit", None, 0, 1)
 
         success, msg = await asyncio.to_thread(
             mgr.update_peer, system, peer_id, password, replica,
             peer_name, request_key, can_inhibit, call_priority,
             jitter, max_size, max_wait,
+            telephone_interconnect, allow_unit_to_unit,
         )
         if not success:
             return Response(status_code=400, headers=_toast(msg, "error"))
@@ -866,6 +880,7 @@ async def update_peer(
 
 @router.delete("/peers/{system}/{peer_id}")
 async def delete_peer(request: Request, system: str, peer_id: int):
+    _require_system(system)
     cfg = _cfg(request)
     mgr = PeerManager(cfg)
     success, msg = await asyncio.to_thread(mgr.remove_peer, system, peer_id)
@@ -989,6 +1004,7 @@ def _extract_rid_entries(path: Path) -> list[dict[str, Any]]:
 
 @router.get("/talkgroups/{system}", response_class=HTMLResponse)
 async def list_talkgroups(request: Request, system: str):
+    _require_system(system)
     import yaml as _yaml
     cfg = _cfg(request)
     path = cfg.system_tgid_acl_file
@@ -1034,6 +1050,7 @@ async def list_talkgroups(request: Request, system: str):
 
 @router.get("/radio-ids/{system}", response_class=HTMLResponse)
 async def list_radio_ids(request: Request, system: str):
+    _require_system(system)
     proxied = await _proxy_if_remote(request)
     if proxied is not None:
         return proxied
@@ -1059,15 +1076,15 @@ async def list_radio_ids(request: Request, system: str):
 
 @router.post("/radio-ids/{system}/reload")
 async def reload_radio_ids(request: Request, system: str):
+    _require_system(system)
     proxied = await _proxy_if_remote(request)
     if proxied is not None:
         return proxied
 
     cfg = _cfg(request)
     mgr = RadioIDManager(cfg)
-    target = "system" if system == "system" else "issi"
     try:
-        result = await asyncio.to_thread(mgr.reload, target)
+        result = await asyncio.to_thread(mgr.reload)
         success = all(r.get("success", True) for r in result.values())
         msg = f"{system.title()} radio IDs reloaded" if success else "Reload failed"
         return Response(status_code=200, headers=_toast(msg, "success" if success else "error"))
@@ -1077,6 +1094,7 @@ async def reload_radio_ids(request: Request, system: str):
 
 @router.get("/talkgroups/{system}/yaml", response_class=HTMLResponse)
 async def get_talkgroup_yaml(request: Request, system: str):
+    _require_system(system)
     cfg = _cfg(request)
     path = cfg.system_tgid_acl_file
     title = "Edit System Talkgroups"
@@ -1099,6 +1117,7 @@ async def save_talkgroup_yaml(
     system: str,
     yaml_content: Annotated[str, Form()],
 ):
+    _require_system(system)
     cfg = _cfg(request)
     path = cfg.system_tgid_acl_file
     if not path:
@@ -1112,6 +1131,7 @@ async def save_talkgroup_yaml(
 
 @router.post("/talkgroups/{system}/reload")
 async def reload_talkgroups(request: Request, system: str):
+    _require_system(system)
     cfg = _cfg(request)
     mgr = TalkgroupManager(cfg)
     try:
@@ -1163,13 +1183,77 @@ async def radio_command(
 
     result = await asyncio.to_thread(fn, rid, peer_id_value)
     success = result.get("success", True)
-    msg = f"RID {rid}, {command.capitalize()} {'Sent' if success else 'Failed'}"
+    operation_id = result.get("operationId") if success else None
+    pending = operation_id is not None and result.get("state") == "pending"
+    msg = f"RID {rid}, {command.capitalize()} {'Pending' if pending else 'Sent' if success else 'Failed'}"
     if not success:
         msg = result.get("error", msg)
     return _frag(request, "fragments/result.html", {
         "success": success,
+        "pending": pending,
         "message": msg,
         "detail": result,
+        "operation_id": operation_id,
+    })
+
+
+@router.get("/radio/operation/{operation_id}", response_class=HTMLResponse)
+async def radio_operation(request: Request, operation_id: int):
+    """Return a polling fragment for one FNE subscriber operation."""
+    proxied = await _proxy_if_remote(request)
+    if proxied is not None:
+        return proxied
+
+    result = await asyncio.to_thread(RadioIDManager(_cfg(request)).get_operation, operation_id)
+    request_success = result.get("success", True)
+    state = str(result.get("state", "")).lower()
+    pending = request_success and state == "pending"
+    success = request_success and state == "succeeded"
+    operation = str(result.get("operation", "operation")).replace("-", " ").title()
+    target_id = result.get("targetId", "")
+
+    if pending:
+        message = f"RID {target_id}, {operation} Pending"
+    elif success:
+        message = f"RID {target_id}, {operation} Succeeded"
+    elif request_success:
+        message = f"RID {target_id}, {operation} {state.replace('-', ' ').title() or 'Failed'}"
+    else:
+        message = result.get("error", "Unable to retrieve subscriber operation")
+
+    response = _frag(request, "fragments/result.html", {
+        "success": success,
+        "pending": pending,
+        "message": message,
+        "detail": result,
+        "operation_id": operation_id if pending else None,
+    })
+    if not pending:
+        response.headers["HX-Trigger"] = "subscriberOperationsChanged"
+    return response
+
+
+@router.get("/radio/operations", response_class=HTMLResponse)
+async def radio_operations(request: Request):
+    """Return the 50 most recent FNE subscriber operations."""
+    proxied = await _proxy_if_remote(request)
+    if proxied is not None:
+        return proxied
+
+    result = await asyncio.to_thread(RadioIDManager(_cfg(request)).get_operations, 50)
+    operations = result.get("operations", []) if result.get("success", True) else []
+    for operation in operations:
+        created_at = operation.get("createdAt")
+        try:
+            operation["createdAtDisplay"] = datetime.fromtimestamp(
+                int(created_at) / 1000
+            ).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+        except (TypeError, ValueError, OSError):
+            operation["createdAtDisplay"] = "—"
+
+    return _frag(request, "fragments/subscriber_operations.html", {
+        "operations": operations,
+        "error": result.get("error", "") if not result.get("success", True) else "",
     })
 
 
@@ -1179,6 +1263,7 @@ async def radio_command(
 
 @router.post("/services/reload-talkgroups/{system}")
 async def reload_tg_service(request: Request, system: str):
+    _require_system(system)
     proxied = await _proxy_if_remote(request)
     if proxied is not None:
         return proxied

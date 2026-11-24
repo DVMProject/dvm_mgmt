@@ -210,11 +210,13 @@ class DVMMgmtCLI(Cmd):
     
     # show logs
     show_logs_parser = show_subparsers.add_parser('logs', help='Show system logs')
-    show_logs_parser.add_argument('type', choices=['system', 'public', 'las-internet', 'las-wifi', 'rc'])
+    show_logs_parser.add_argument('type', choices=['system'])
     show_logs_parser.add_argument('--lines', '-n', type=int, default=50, help='Number of lines to show')
     show_logs_parser.add_argument('--netsplit', action='store_true', help='Show netsplit logs')
     show_logs_parser.add_argument('--duplicates', action='store_true', help='Show duplicate connection drops')
     show_logs_parser.add_argument('--unauthorized', action='store_true', help='Show unauthorized access logs')
+    show_logs_parser.add_argument('--tail', '-f', action='store_true', help='Follow new log entries')
+    show_logs_parser.add_argument('--filter', dest='filter_pattern', help='Filter with a case-insensitive extended regular expression')
     
     # show pids
     show_pids_parser = show_subparsers.add_parser('pids', help='Show running processes')
@@ -227,7 +229,6 @@ class DVMMgmtCLI(Cmd):
     
     # show peers
     show_peers_parser = show_subparsers.add_parser('peers', help='Show peers')
-    show_peers_parser.add_argument('--system', choices=['system', 'public', 'both'], default='both')
     show_peers_parser.add_argument('--show-passwords', action='store_true', help='Show passwords in plain text')
     
     # show spanning-tree
@@ -249,7 +250,9 @@ class DVMMgmtCLI(Cmd):
             self._show_logs(args.type, args.lines,
                           netsplit=getattr(args, 'netsplit', False),
                           duplicates=getattr(args, 'duplicates', False),
-                          unauthorized=getattr(args, 'unauthorized', False))
+                          unauthorized=getattr(args, 'unauthorized', False),
+                          tail=getattr(args, 'tail', False),
+                          filter_pattern=getattr(args, 'filter_pattern', None))
         elif args.show_cmd == 'pids':
             self._show_processes(
                 show_all=getattr(args, 'all', False),
@@ -266,7 +269,7 @@ class DVMMgmtCLI(Cmd):
             if getattr(args, 'show_passwords', False) and not self.privileged_mode:
                 self.perror("--show-passwords requires privileged mode.")
                 return
-            self._show_peers(args.system, getattr(args, 'show_passwords', False))
+            self._show_peers(getattr(args, 'show_passwords', False))
         elif args.show_cmd == 'spanning-tree':
             self._show_spanning_tree()
         elif args.show_cmd == 'memory':
@@ -282,36 +285,32 @@ class DVMMgmtCLI(Cmd):
         self.poutput(f"\nDVM Management CLI Version {__version__}")
         self.poutput(f"Copyright (C) 2026 DVMProject Authors\n")
     
-    def _show_logs(self, log_type: str, lines: int, netsplit: bool = False, duplicates: bool = False, unauthorized: bool = False):
+    def _show_logs(self, log_type: str, lines: int, netsplit: bool = False,
+                   duplicates: bool = False, unauthorized: bool = False,
+                   tail: bool = False, filter_pattern: Optional[str] = None):
         """Show log file contents with filtering options."""
         try:
-            # For system/public logs, always use the log_viewer module from configuration
+            # DVM Management has one system log stream.
             from dvm_mgmt.core.log_viewer import view_syslog_fne
-            
-            # Determine if we're viewing system or public logs
-            system_only = (log_type == 'system')
             
             # Call the log viewer with configuration values
             if netsplit:
-                view_syslog_fne(system_only=system_only, netsplit=True, scrollback=lines,
+                view_syslog_fne(netsplit=True, scrollback=lines,
                                 log_file=str(self.config.log_file),
-                                log_prefix_system=self.config.log_prefix_system,
-                                log_prefix_public=self.config.log_prefix_public)
+                                log_prefix_system=self.config.log_prefix_system)
             elif duplicates:
-                view_syslog_fne(system_only=system_only, duplicates=True, scrollback=lines,
+                view_syslog_fne(duplicates=True, scrollback=lines,
                                 log_file=str(self.config.log_file),
-                                log_prefix_system=self.config.log_prefix_system,
-                                log_prefix_public=self.config.log_prefix_public)
+                                log_prefix_system=self.config.log_prefix_system)
             elif unauthorized:
-                view_syslog_fne(system_only=system_only, unauthorized=True, scrollback=lines,
+                view_syslog_fne(unauthorized=True, scrollback=lines,
                                 log_file=str(self.config.log_file),
-                                log_prefix_system=self.config.log_prefix_system,
-                                log_prefix_public=self.config.log_prefix_public)
+                                log_prefix_system=self.config.log_prefix_system)
             else:
-                view_syslog_fne(system_only=system_only, tail=tail, scrollback=lines,
+                view_syslog_fne(tail=tail, scrollback=lines,
+                                grep_pattern=filter_pattern,
                                 log_file=str(self.config.log_file),
-                                log_prefix_system=self.config.log_prefix_system,
-                                log_prefix_public=self.config.log_prefix_public)
+                                log_prefix_system=self.config.log_prefix_system)
         
         except KeyboardInterrupt:
             # User pressed Ctrl+C to stop tailing
@@ -448,105 +447,58 @@ class DVMMgmtCLI(Cmd):
             self.perror(f"Error retrieving memory info: {e}")
 
     
-    def _show_peers(self, system: str, show_passwords: bool = False):
-        """Show peers.
-        
-        Args:
-            system: Which peer system to show ('system', 'public', or 'both')
-            show_passwords: If True, show passwords in plain text instead of masked
-        """
+    def _show_peers(self, show_passwords: bool = False):
+        """Show peers from the system ACL."""
         try:
-            if system in ['system', 'both']:
-                peers = self.peer_mgr.list_peers('system')
-                # Sort by peer ID like bash script does
-                peers.sort(key=lambda x: x.get('id', 0))
-                
-                table = Table(title="System Peers")
-                table.add_column("Peer Name", style="yellow")
-                table.add_column("Peer ID", style="cyan", justify="right")
-                table.add_column("Password", style="magenta")
-                table.add_column("Replica", justify="center")
-                table.add_column("Req Key", justify="center")
-                table.add_column("Can Inh", justify="center")
-                table.add_column("Call Pri", justify="right")
-                table.add_column("Jitter", justify="right")
-                table.add_column("Max Size", justify="right")
-                table.add_column("Max Wait", justify="right")
-                
-                for peer in peers:
-                    # Conditionally mask password based on show_passwords flag
-                    password = peer.get('password', '')
-                    if show_passwords:
-                        display_pwd = password
+            peers = self.peer_mgr.list_peers('system')
+            # Sort by peer ID like bash script does
+            peers.sort(key=lambda x: x.get('id', 0))
+
+            table = Table(title="System Peers")
+            table.add_column("Peer Name", style="yellow")
+            table.add_column("Peer ID", style="cyan", justify="right")
+            table.add_column("Password", style="magenta")
+            table.add_column("Replica", justify="center")
+            table.add_column("Req Key", justify="center")
+            table.add_column("Can Inh", justify="center")
+            table.add_column("Call Pri", justify="right")
+            table.add_column("Jitter", justify="right")
+            table.add_column("Max Size", justify="right")
+            table.add_column("Max Wait", justify="right")
+            table.add_column("Tel Int", justify="center")
+            table.add_column("Allow U2U", justify="center")
+
+            for peer in peers:
+                # Conditionally mask password based on show_passwords flag
+                password = peer.get('password', '')
+                if show_passwords:
+                    display_pwd = password
+                else:
+                    # Mask password - show first 3 and last 3 chars with asterisks in middle
+                    if len(password) > 6:
+                        display_pwd = password[:3] + '*' * (len(password) - 6) + password[-3:]
+                    elif len(password) > 0:
+                        display_pwd = '*' * len(password)
                     else:
-                        # Mask password - show first 3 and last 3 chars with asterisks in middle
-                        if len(password) > 6:
-                            display_pwd = password[:3] + '*' * (len(password) - 6) + password[-3:]
-                        elif len(password) > 0:
-                            display_pwd = '*' * len(password)
-                        else:
-                            display_pwd = ''
-                    
-                    table.add_row(
-                        peer.get('name', 'N/A')[:30],  # Truncate to 30 chars like bash
-                        str(peer.get('id', 'N/A')),
-                        display_pwd[:30],  # Truncate to 30 chars
-                        str(peer.get('replica', 0)),
-                        str(peer.get('require_key', 0)),
-                        str(peer.get('can_inhibit', 0)),
-                        str(peer.get('call_priority', 0)),
-                        str(peer.get('jitter', 360)),
-                        str(peer.get('max_size', 12582912)),
-                        str(peer.get('max_wait', 25))
-                    )
-                
-                self.console.print(table)
-            
-            if system in ['public', 'both']:
-                peers = self.peer_mgr.list_peers('public')
-                # Sort by peer ID like bash script does
-                peers.sort(key=lambda x: x.get('id', 0))
-                
-                table = Table(title="Public Peers")
-                table.add_column("Peer Name", style="yellow")
-                table.add_column("Peer ID", style="cyan", justify="right")
-                table.add_column("Password", style="magenta")
-                table.add_column("Replica", justify="center")
-                table.add_column("Req Key", justify="center")
-                table.add_column("Can Inh", justify="center")
-                table.add_column("Call Pri", justify="right")
-                table.add_column("Jitter", justify="right")
-                table.add_column("Max Size", justify="right")
-                table.add_column("Max Wait", justify="right")
-                
-                for peer in peers:
-                    # Conditionally mask password based on show_passwords flag
-                    password = peer.get('password', '')
-                    if show_passwords:
-                        display_pwd = password
-                    else:
-                        # Mask password - show first 3 and last 3 chars with asterisks in middle
-                        if len(password) > 6:
-                            display_pwd = password[:3] + '*' * (len(password) - 6) + password[-3:]
-                        elif len(password) > 0:
-                            display_pwd = '*' * len(password)
-                        else:
-                            display_pwd = ''
-                    
-                    table.add_row(
-                        peer.get('name', 'N/A')[:30],  # Truncate to 30 chars like bash
-                        str(peer.get('id', 'N/A')),
-                        display_pwd[:30],  # Truncate to 30 chars
-                        str(peer.get('replica', 0)),
-                        str(peer.get('require_key', 0)),
-                        str(peer.get('can_inhibit', 0)),
-                        str(peer.get('call_priority', 0)),
-                        str(peer.get('jitter', 360)),
-                        str(peer.get('max_size', 12582912)),
-                        str(peer.get('max_wait', 25))
-                    )
-                
-                self.console.print(table)
+                        display_pwd = ''
+
+                table.add_row(
+                    peer.get('name', 'N/A')[:30],  # Truncate to 30 chars like bash
+                    str(peer.get('id', 'N/A')),
+                    display_pwd[:30],  # Truncate to 30 chars
+                    str(peer.get('replica', 0)),
+                    str(peer.get('request_key', 0)),
+                    str(peer.get('can_inhibit', 0)),
+                    str(peer.get('call_priority', 0)),
+                    str(peer.get('jitter', 360)),
+                    str(peer.get('max_size', 12582912)),
+                    str(peer.get('max_wait', 25)),
+                    str(peer.get('telephone_interconnect', 0)),
+                    str(peer.get('allow_unit_to_unit', 1))
+                )
+
+            self.console.print(table)
+
         except Exception as e:
             self.perror(f"Error: {e}")
     
@@ -607,13 +559,13 @@ Press [Enter] to continue or Ctrl+C to cancel: """
                     self.poutput("\n[ABORTD] Inhibit operation cancelled")
                     return
                 
-                result = self.rid_mgr.inhibit(args.rid, args.peer_id, args.system)
+                result = self.rid_mgr.inhibit(args.rid, args.peer_id)
             elif args.radio_cmd == 'uninhibit':
-                result = self.rid_mgr.uninhibit(args.rid, args.peer_id, args.system)
+                result = self.rid_mgr.uninhibit(args.rid, args.peer_id)
             elif args.radio_cmd == 'page':
-                result = self.rid_mgr.page(args.rid, args.peer_id, args.system)
+                result = self.rid_mgr.page(args.rid, args.peer_id)
             elif args.radio_cmd == 'check':
-                result = self.rid_mgr.check(args.rid, args.peer_id, args.system)
+                result = self.rid_mgr.check(args.rid, args.peer_id)
             else:
                 return
             
@@ -696,12 +648,12 @@ Press [Enter] to continue or Ctrl+C to cancel: """
             
             elif args.target == 'rids':
                 self.poutput("Reloading radio IDs...")
-                result = self.rid_mgr.reload(args.system)
+                result = self.rid_mgr.reload()
                 self.poutput("[  OK  ] Radio IDs reloaded")
             
             elif args.target == 'talkgroups':
                 self.poutput("Reloading talkgroups...")
-                result = self.tg_mgr.reload(args.system)
+                result = self.tg_mgr.reload()
                 self.poutput("[  OK  ] Talkgroups reloaded")
 
             elif args.target == 'peer-list':
@@ -1286,6 +1238,8 @@ Press [Enter] to continue or Ctrl+C to cancel: """
     add_peer_parser.add_argument('--replica', type=int, choices=[0, 1], default=0, help='Replica flag (0 or 1)')
     add_peer_parser.add_argument('--require-key', type=int, choices=[0, 1], default=0, help='Require encryption key')
     add_peer_parser.add_argument('--can-inhibit', type=int, choices=[0, 1], default=0, help='Can inhibit flag')
+    add_peer_parser.add_argument('--telephone-interconnect', type=int, choices=[0, 1], default=0, help='Telephone interconnect gateway flag')
+    add_peer_parser.add_argument('--allow-unit-to-unit', type=int, choices=[0, 1], default=1, help='Allow unit-to-unit traffic')
 
     
     # peer remove
@@ -1326,8 +1280,10 @@ Press [Enter] to continue or Ctrl+C to cancel: """
                     args.password,
                     replica=args.replica,
                     peer_name=args.name or "",
-                    require_key=args.require_key,
-                    can_inhibit=args.can_inhibit
+                    request_key=args.require_key,
+                    can_inhibit=args.can_inhibit,
+                    telephone_interconnect=args.telephone_interconnect,
+                    allow_unit_to_unit=args.allow_unit_to_unit
                 )
                 if success:
                     self.poutput(f"[  OK  ] {message}")

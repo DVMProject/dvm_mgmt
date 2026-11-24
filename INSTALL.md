@@ -103,7 +103,7 @@ Bind the app to loopback so it is only reachable from Nginx:
 
 ```bash
 cd dvm_mgmt
-run --mode web --host 127.0.0.1 --web-port 8996
+run --mode web --web-host 127.0.0.1 --web-port 8996
 ```
 
 If you run under systemd, keep the same host and port values in the unit file.

@@ -1,0 +1,42 @@
+<!-- fragments/subscriber_operations.html — recent FNE subscriber operations -->
+{% if error %}
+<div class="px-5 py-6 text-sm text-red-400">{{ error }}</div>
+{% elif not operations %}
+<div class="px-5 py-6 text-sm text-muted-foreground">No subscriber operations have been reported.</div>
+{% else %}
+<table class="w-full text-sm">
+    <thead class="text-xs text-muted-foreground border-b">
+        <tr>
+            <th class="px-4 py-3 text-left font-medium">Time</th>
+            <th class="px-4 py-3 text-left font-medium">Protocol</th>
+            <th class="px-4 py-3 text-left font-medium">Operation</th>
+            <th class="px-4 py-3 text-left font-medium">Radio ID</th>
+            <th class="px-4 py-3 text-left font-medium">Peer ID</th>
+            <th class="px-4 py-3 text-left font-medium">State</th>
+            <th class="px-4 py-3 text-left font-medium">Result</th>
+        </tr>
+    </thead>
+    <tbody class="divide-y">
+        {% for operation in operations %}
+        {% set state = operation.get('state', '') %}
+        <tr>
+            <td class="px-4 py-3 whitespace-nowrap text-muted-foreground">{{ operation.get('createdAtDisplay', '—') }}</td>
+            <td class="px-4 py-3 uppercase">{{ operation.get('protocol', '—') }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">{{ operation.get('operation', '—') | replace('-', ' ') | title }}</td>
+            <td class="px-4 py-3 font-mono">{{ operation.get('targetId', '—') }}</td>
+            <td class="px-4 py-3 font-mono">{{ operation.get('peerId') or '—' }}</td>
+            <td class="px-4 py-3">
+                <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium
+                    {% if state == 'succeeded' %}bg-green-500/15 text-green-400
+                    {% elif state == 'pending' %}bg-blue-500/15 text-blue-400
+                    {% elif state == 'timed-out' %}bg-yellow-500/15 text-yellow-400
+                    {% else %}bg-red-500/15 text-red-400{% endif %}">
+                    {{ state | replace('-', ' ') | title }}
+                </span>
+            </td>
+            <td class="px-4 py-3 font-mono">{{ operation.get('resultValue', 0) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}

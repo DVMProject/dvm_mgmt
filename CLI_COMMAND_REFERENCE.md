@@ -36,20 +36,18 @@ show stats                              # Display FNE statistics
 ### Logs
 
 ```bash
-show logs system                        # Show system log
-show logs fne                           # Show FNE log
+show logs system                        # Show system FNE records
 
 # Log options:
 show logs <type> --lines 100            # Show last 100 lines
-show logs <type> --colorize             # Colorize log output
+show logs <type> --filter ERROR         # Search the full log with an extended regex
+show logs <type> --tail                 # Follow new matching records
 ```
 
 ### Peers
 
 ```bash
 show peers                              # Show all peers
-show peers --system system              # Show system peers only
-show peers --system public              # Show public peers only
 ```
 
 ### Network Topology
@@ -65,7 +63,6 @@ Radio ID operations (requires privileged mode):
 ```bash
 radio inhibit <RID>                     # Inhibit a radio ID
 radio inhibit <RID> --peer-id <ID>      # Inhibit on specific peer
-radio inhibit <RID> --system issi       # Inhibit on ISSI system
 
 radio uninhibit <RID>                   # Uninhibit a radio ID
 radio uninhibit <RID> --peer-id <ID>    # Uninhibit on specific peer
@@ -111,11 +108,8 @@ Restart services and reload configuration (requires privileged mode):
 reload service fne                      # Restart FNE service
 
 reload rids                             # Reload radio IDs
-reload rids --system system             # Reload system RIDs only
-reload rids --system issi               # Reload ISSI RIDs only
 
 reload talkgroups                       # Reload talkgroups
-reload talkgroups --system system       # Reload system TGs only
 ```
 
 ## Peer Commands
@@ -123,7 +117,10 @@ reload talkgroups --system system       # Reload system TGs only
 Peer connection management (requires privileged mode):
 
 **Note**: Peer ACL files are CSV format with the following fields:
-- `peer_id,password,replica,peer_name,require_key,can_inhibit,call_priority,jitter,max_size,max_wait`
+- `peer_id,password,replica,peer_name,request_key,can_inhibit,call_priority,jitter,max_size,max_wait,telephone_interconnect,allow_unit_to_unit`
+
+The final two fields are backward compatible: telephone interconnect defaults to
+disabled and unit-to-unit traffic defaults to allowed when they are omitted.
 
 ```bash
 peer list                               # List all peers
@@ -135,6 +132,8 @@ peer add <ID> <password> [options]
   --replica {0,1}       Replica flag (default: 0)
   --require-key {0,1}   Require encryption key (default: 0)
   --can-inhibit {0,1}   Can inhibit flag (default: 0)
+  --telephone-interconnect {0,1}  Telephone interconnect gateway (default: 0)
+  --allow-unit-to-unit {0,1}      Allow unit-to-unit traffic (default: 1)
 
 peer remove <ID>                        # Remove peer
 

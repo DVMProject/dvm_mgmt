@@ -278,6 +278,8 @@ class DVMAPIClient:
             return response_data
 
         if 'success' in response_data:
+            if not response_data['success'] and not response_data.get('error'):
+                response_data['error'] = DVMAPIClient._response_error(response_data)
             return response_data
 
         status = response_data.get('status')
@@ -287,14 +289,27 @@ class DVMAPIClient:
 
         if isinstance(status, int):
             response_data['success'] = status in (0, 200)
-            return response_data
-
-        if isinstance(status, str):
+        elif isinstance(status, str):
             response_data['success'] = status.lower() in ('ok', 'success', '0', '200')
-            return response_data
+        else:
+            response_data['success'] = True
 
-        response_data['success'] = True
+        if not response_data['success'] and not response_data.get('error'):
+            response_data['error'] = DVMAPIClient._response_error(response_data)
         return response_data
+
+    @staticmethod
+    def _response_error(response_data: Dict[str, Any]) -> str:
+        """Extract a useful error from a failed API response."""
+        message = response_data.get('message') or response_data.get('output')
+        if message:
+            return str(message)
+
+        status = response_data.get('status')
+        if status is not None:
+            return f"API request failed with status {status}"
+
+        return "Unknown error"
 
     @staticmethod
     def _parse_response(response: Response) -> Any:
@@ -362,6 +377,27 @@ class DVMAPIClient:
             verify=self.verify_ssl,
         )
         return response
+
+    def _get_authenticated(self, endpoint: str) -> Dict[str, Any]:
+        """Issue an authenticated GET and normalize its JSON response."""
+        try:
+            with self._endpoint_lock():
+                token = self._authenticate()
+                response = self._request('GET', endpoint, token, None)
+
+            parsed = self._parse_response(response)
+            normalized = self._normalize_response(parsed)
+            if isinstance(normalized, dict):
+                return normalized
+            return {'success': True, 'output': normalized}
+        except requests.RequestException as exc:
+            return {
+                'success': False,
+                'error': str(exc),
+                'returncode': exc.response.status_code if exc.response is not None else -1,
+            }
+        except Exception as exc:
+            return {'success': False, 'error': str(exc), 'returncode': -1}
 
     def _build_request_spec(self, command: str, args: Tuple[Any, ...]) -> RequestSpec:
         """Map a CLI-style command and args to an HTTP request specification."""
@@ -491,6 +527,15 @@ class DVMAPIClient:
     def rid_page(self, rid: int, peer_id: Optional[int] = None) -> Dict[str, Any]:
         """Page a radio ID."""
         return self.call("fne-p25-rid-page", rid, peer_id)
+
+    def get_subscriber_operation(self, operation_id: int) -> Dict[str, Any]:
+        """Get the current state of an FNE subscriber operation."""
+        return self._get_authenticated(f"/rid/operation/{int(operation_id)}")
+
+    def get_subscriber_operations(self, count: int = 50) -> Dict[str, Any]:
+        """Get the most recent FNE subscriber operations."""
+        limited_count = max(1, min(int(count), 64))
+        return self._get_authenticated(f"/rid/operation/last/{limited_count}")
 
     def dmr_rid_page(self, slot: int, rid: int, peer_id: Optional[int] = None) -> Dict[str, Any]:
         """Page/call a DMR radio ID."""

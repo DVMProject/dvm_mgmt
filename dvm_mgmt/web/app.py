@@ -40,6 +40,44 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
 
+def _syslog_log_config(log_level: str = "info") -> dict:
+    """Build a Uvicorn logging configuration for the local syslog socket."""
+    logger_level = 5 if log_level == "trace" else log_level.upper()
+    return {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "syslog": {
+                "format": "dvm-mgmt[%(process)d]: %(levelname)s %(message)s",
+            },
+        },
+        "handlers": {
+            "syslog": {
+                "class": "logging.handlers.SysLogHandler",
+                "formatter": "syslog",
+                "address": "/dev/log",
+            },
+        },
+        "loggers": {
+            "uvicorn": {
+                "handlers": ["syslog"],
+                "level": logger_level,
+                "propagate": False,
+            },
+            "uvicorn.error": {
+                "handlers": [],
+                "level": logger_level,
+                "propagate": True,
+            },
+            "uvicorn.access": {
+                "handlers": ["syslog"],
+                "level": logger_level,
+                "propagate": False,
+            },
+        },
+    }
+
+
 def _session_secret(config: ConsoleConfig) -> str:
     """Resolve a stable session secret key."""
     env_secret = os.getenv("WEB_SESSION_SECRET", "").strip()
@@ -785,9 +823,18 @@ def main(
     config_file: Optional[Path] = None,
     host: str = "0.0.0.0",
     port: int = 8080,
+    foreground_logs: bool = False,
+    log_level: str = "info",
 ) -> int:
     """Start the DVM Management web interface."""
     config = ConsoleConfig.load(config_file)
     app = create_app(config)
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    run_options = {
+        "host": host,
+        "port": port,
+        "log_level": log_level,
+    }
+    if not foreground_logs:
+        run_options["log_config"] = _syslog_log_config(log_level)
+    uvicorn.run(app, **run_options)
     return 0

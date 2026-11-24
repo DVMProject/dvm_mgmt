@@ -1,7 +1,7 @@
 <!-- fragments/peer_table.html -->
 {% if peers %}
 <div class="max-h-[70dvh] overflow-auto overscroll-contain 2xl:max-h-none 2xl:overflow-visible">
-    <table class="w-full min-w-[68rem] text-sm">
+    <table class="w-full min-w-[78rem] text-sm">
         <thead>
             <tr class="text-left text-xs font-semibold text-foreground uppercase tracking-wider border-b">
                 <th class="bg-card pt-2 pb-2 px-4 py-3">ID</th>
@@ -11,6 +11,8 @@
                 <th class="bg-card pt-2 pb-2 px-4 py-3 text-center">Req Key</th>
                 <th class="bg-card pt-2 pb-2 px-4 py-3 text-center">Inhibit</th>
                 <th class="bg-card pt-2 pb-2 px-4 py-3 text-center">Priority</th>
+                <th class="bg-card pt-2 pb-2 px-4 py-3 text-center">Tel Int</th>
+                <th class="bg-card pt-2 pb-2 px-4 py-3 text-center">Allow U2U</th>
                 <th class="bg-card pt-2 pb-2 px-4 py-3 text-center">Jitter</th>
                 <th class="bg-card pt-2 pb-2 px-4 py-3 text-right">Max Frames</th>
                 <th class="bg-card pt-2 pb-2 px-4 py-3 text-right">Max Wait</th>
@@ -48,6 +50,16 @@
                 <td class="px-4 py-3 text-center" x-show="!editing">
                     {% if peer.call_priority %}<span
                         class="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">Yes</span>
+                    {% else %}<span class="text-xs text-muted-foreground">No</span>{% endif %}
+                </td>
+                <td class="px-4 py-3 text-center" x-show="!editing">
+                    {% if peer.telephone_interconnect %}<span
+                        class="text-xs px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400">Yes</span>
+                    {% else %}<span class="text-xs text-muted-foreground">No</span>{% endif %}
+                </td>
+                <td class="px-4 py-3 text-center" x-show="!editing">
+                    {% if peer.allow_unit_to_unit %}<span
+                        class="text-xs px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">Yes</span>
                     {% else %}<span class="text-xs text-muted-foreground">No</span>{% endif %}
                 </td>
                 <td class="px-4 py-3 text-center" x-show="!editing">
@@ -90,6 +102,16 @@
                         class="bg-input border rounded px-1 py-1 text-xs text-foreground focus:outline-none">
                         <option value="0" {{ 'selected' if not peer.call_priority }}>No</option>
                         <option value="1" {{ 'selected' if peer.call_priority }}>Yes</option>
+                    </select></td>
+                <td class="px-2 py-2 text-center" x-show="editing" style="display:none"><select name="telephone_interconnect"
+                        class="bg-input border rounded px-1 py-1 text-xs text-foreground focus:outline-none">
+                        <option value="0" {{ 'selected' if not peer.telephone_interconnect }}>No</option>
+                        <option value="1" {{ 'selected' if peer.telephone_interconnect }}>Yes</option>
+                    </select></td>
+                <td class="px-2 py-2 text-center" x-show="editing" style="display:none"><select name="allow_unit_to_unit"
+                        class="bg-input border rounded px-1 py-1 text-xs text-foreground focus:outline-none">
+                        <option value="0" {{ 'selected' if not peer.allow_unit_to_unit }}>No</option>
+                        <option value="1" {{ 'selected' if peer.allow_unit_to_unit }}>Yes</option>
                     </select></td>
                 <td class="px-2 py-2 text-center" x-show="editing" style="display:none"><select name="jitter"
                         class="bg-input border rounded px-1 py-1 text-xs text-foreground focus:outline-none">

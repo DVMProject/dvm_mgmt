@@ -43,13 +43,14 @@ class RadioIDManager:
         Args:
             rid: Radio ID to inhibit
             peer_id: Optional peer ID
-            system: System type ('system' or 'issi')
+            system: Must be 'system'
 
         Returns:
             Result dictionary
         """
-        api = self.system_api if system == "system" else self.issi_api
-        return api.rid_inhibit(rid, peer_id)
+        if system != "system":
+            raise ValueError(f"Invalid system type: {system}")
+        return self.system_api.rid_inhibit(rid, peer_id)
 
     def uninhibit(
         self, rid: int, peer_id: Optional[int] = None, system: str = "system"
@@ -60,13 +61,14 @@ class RadioIDManager:
         Args:
             rid: Radio ID to uninhibit
             peer_id: Optional peer ID
-            system: System type ('system' or 'issi')
+            system: Must be 'system'
 
         Returns:
             Result dictionary
         """
-        api = self.system_api if system == "system" else self.issi_api
-        return api.rid_uninhibit(rid, peer_id)
+        if system != "system":
+            raise ValueError(f"Invalid system type: {system}")
+        return self.system_api.rid_uninhibit(rid, peer_id)
 
     def page(
         self, rid: int, peer_id: Optional[int] = None, system: str = "system"
@@ -77,13 +79,14 @@ class RadioIDManager:
         Args:
             rid: Radio ID to page
             peer_id: Optional peer ID
-            system: System type ('system' or 'issi')
+            system: Must be 'system'
 
         Returns:
             Result dictionary
         """
-        api = self.system_api if system == "system" else self.issi_api
-        return api.rid_page(rid, peer_id)
+        if system != "system":
+            raise ValueError(f"Invalid system type: {system}")
+        return self.system_api.rid_page(rid, peer_id)
 
     def check(
         self, rid: int, peer_id: Optional[int] = None, system: str = "system"
@@ -94,31 +97,44 @@ class RadioIDManager:
         Args:
             rid: Radio ID to check
             peer_id: Optional peer ID
-            system: System type ('system' or 'issi')
+            system: Must be 'system'
 
         Returns:
             Result dictionary
         """
-        api = self.system_api if system == "system" else self.issi_api
-        return api.rid_check(rid, peer_id)
+        if system != "system":
+            raise ValueError(f"Invalid system type: {system}")
+        return self.system_api.rid_check(rid, peer_id)
 
-    def reload(self, system: str = "both") -> Dict[str, Any]:
+    def get_operation(
+        self, operation_id: int, system: str = "system"
+    ) -> Dict[str, Any]:
+        """Return the current state of a subscriber operation."""
+        if system != "system":
+            raise ValueError(f"Invalid system type: {system}")
+        return self.system_api.get_subscriber_operation(operation_id)
+
+    def get_operations(
+        self, count: int = 50, system: str = "system"
+    ) -> Dict[str, Any]:
+        """Return the most recent subscriber operations."""
+        if system != "system":
+            raise ValueError(f"Invalid system type: {system}")
+        return self.system_api.get_subscriber_operations(count)
+
+    def reload(self, system: str = "system") -> Dict[str, Any]:
         """
         Reload radio IDs from file.
 
         Args:
-            system: System to reload ('system', 'issi', or 'both')
+            system: Must be 'system'
 
         Returns:
             Result dictionary
         """
-        results = {}
-
-        if system in ("system", "both"):
-            results["system"] = self.system_api.reload_rids()
-            results["system_update"] = self.system_api.force_update()
-
-        if system in ("issi", "both"):
-            results["issi"] = self.issi_api.reload_rids()
-
-        return results
+        if system != "system":
+            raise ValueError(f"Invalid system type: {system}")
+        return {
+            "system": self.system_api.reload_rids(),
+            "system_update": self.system_api.force_update(),
+        }
